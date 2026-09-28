@@ -1,0 +1,95 @@
+{% extends 'base.html' %}
+{% block title %}Hallazgos · Lesiones personales en Colombia{% endblock %}
+{% block content %}
+<main class="findings-page">
+    <section class="findings-hero">
+        <div>
+            <p class="eyebrow">Hallazgos principales <span>●</span> 2021—2025</p>
+            <h1>Lo que cuentan<br><em>los registros.</em></h1>
+            <p class="hero-intro">Una síntesis visual de las señales más importantes del estudio para entender el fenómeno antes de entrar al detalle.</p>
+            <div class="hero-actions">
+                <a class="button button-dark" href="#hallazgos-clave">Ver hallazgos <span>↘</span></a>
+                <a class="text-link" href="{% url 'portal:dashboard' %}">Ver dashboard <span>→</span></a>
+            </div>
+        </div>
+        <aside class="findings-hero-card">
+            <span>La cifra que orienta</span>
+            <strong>{{ insights.total_victims }}</strong>
+            <p>víctimas registradas durante cinco años de observación nacional.</p>
+        </aside>
+    </section>
+
+    <section class="section findings-section" id="hallazgos-clave">
+        <div class="section-heading">
+            <p class="eyebrow">Cuatro señales</p>
+            <h2>Una lectura breve<br><em>para tomar posición.</em></h2>
+        </div>
+        <div class="findings-grid">
+            <article class="finding-card finding-card-dark"><span>01 · Pico del periodo</span><strong>{{ insights.peak_value }}</strong><h3>{{ insights.peak_year }}</h3><p>El año con mayor volumen de víctimas registradas concentra la señal más alta de la serie.</p></article>
+            <article class="finding-card"><span>02 · Descenso posterior</span><strong>{{ insights.peak_reduction }}</strong><h3>Después del pico</h3><p>La tendencia baja de manera sostenida hacia el cierre del periodo observado.</p></article>
+            <article class="finding-card finding-card-accent"><span>03 · Territorio dominante</span><strong>{{ insights.top_region.share }}</strong><h3>{{ insights.top_region.label|title }}</h3><p>{{ insights.top_region.value }} víctimas acumuladas en la región con mayor concentración.</p></article>
+            <article class="finding-card"><span>04 · Perfil frecuente</span><strong>{{ insights.top_age.share }}</strong><h3>{{ insights.top_age.label|title }}</h3><p>El grupo de edad con mayor presencia dentro de los registros analizados.</p></article>
+        </div>
+    </section>
+
+    <section class="section findings-reading">
+        <div class="findings-reading-heading"><p class="eyebrow">Cómo leerlos</p><h2>El dato necesita<br><em>contexto.</em></h2></div>
+        <div class="findings-reading-list">
+            <article><span>Tiempo</span><h3>El pico no es toda la historia</h3><p>Comparar 2022 con 2025 permite observar una reducción posterior y evita interpretar un solo año de forma aislada.</p></article>
+            <article><span>Territorio</span><h3>La concentración orienta la pregunta</h3><p>La Región Andina reúne la mayor participación, pero el mapa permite descubrir diferencias entre departamentos.</p></article>
+            <article><span>Población</span><h3>Los perfiles hacen visible el riesgo</h3><p>Edad, género y medios empleados ayudan a pasar del volumen general a una conversación de prevención.</p></article>
+        </div>
+    </section>
+
+    <section class="section findings-evidence">
+        <div class="section-heading"><p class="eyebrow">Evidencia en movimiento</p><h2>La tendencia<br><em>año por año.</em></h2></div>
+        <div class="findings-evidence-grid">
+            <div class="findings-annual-table">
+                <div class="findings-table-heading"><span>Año</span><span>Víctimas</span><span>Variación</span></div>
+                {% for row in statistics.annual %}
+                <div class="findings-table-row"><strong>{{ row.label }}</strong><b>{{ row.value }}</b><span>{{ row.growth|default:'—' }}</span></div>
+                {% empty %}<p class="data-empty">No hay datos anuales publicados.</p>{% endfor %}
+            </div>
+            <div class="findings-evidence-copy">
+                <article><span>Lectura temporal</span><h3>El máximo aparece antes del cierre</h3><p>El valor más alto se concentra en {{ insights.peak_year }}. La comparación anual permite ver que el descenso posterior no elimina la magnitud acumulada del fenómeno.</p></article>
+                <article><span>Lectura territorial</span><h3>La concentración no es uniforme</h3><p>{{ insights.top_region.label|title }} reúne {{ insights.top_region.share }} del total. Para descubrir los contrastes internos, continúa en el mapa y cambia los filtros por departamento.</p></article>
+                <article><span>Lectura poblacional</span><h3>El perfil completa la historia</h3><p>{{ insights.top_age.label|title }} es el grupo con mayor participación. Cruzar edad y género en el dashboard ayuda a formular preguntas más precisas.</p></article>
+            </div>
+        </div>
+    </section>
+
+    <section class="section recommendations-section" id="recomendaciones">
+        <div class="section-heading"><p class="eyebrow">Del hallazgo a la acción</p><h2>Qué puede hacerse<br><em>con esta evidencia.</em></h2></div>
+        <div class="recommendations-grid">
+            <article><span>Autoridades locales</span><h3>Priorizar el fin de semana</h3><p>El domingo concentra el 24,0% de los registros y el fin de semana reúne el 40,5%. Esta señal puede orientar refuerzos de atención, prevención y convivencia.</p></article>
+            <article><span>Seguridad y salud</span><h3>Leer el medio empleado</h3><p>Los elementos contundentes y los hechos sin arma reúnen el 83,4%, mientras que armas de fuego y traumáticas muestran brechas de género más marcadas.</p></article>
+            <article><span>Prevención comunitaria</span><h3>Trabajar con población adulta</h3><p>Las personas adultas representan el 91,9% de los registros. Las acciones deben enfocarse en conflictos interpersonales y espacios de ocio.</p></article>
+        </div>
+        <p class="recommendations-note">Estas son líneas de interpretación y prevención basadas en patrones descriptivos; no sustituyen diagnósticos causales ni decisiones institucionales.</p>
+    </section>
+
+    <section class="section findings-resources" id="recursos">
+        <div class="section-heading"><p class="eyebrow">Para profundizar</p><h2>Consulta la evidencia<br><em>detrás de cada hallazgo.</em></h2></div>
+        {% if documents %}
+        <div class="findings-resource-grid">
+            {% for document in documents %}
+            <article class="findings-resource-card">
+                <span class="file-badge">{{ document.document_type|upper }}</span>
+                <h3>{{ document.title }}</h3><small class="resource-meta">{{ document.type_label }} · {{ document.file_size_label }}</small>
+                <p>{{ document.curated_summary }}</p>
+                <div class="findings-resource-actions">
+                    <a href="{% url 'portal:document_detail' document.slug %}">Ver documento <span>→</span></a>
+                    {% if document.document_type == 'word' %}<a href="{% url 'portal:document_pdf' document.slug %}?download=1">Descargar <span>↓</span></a>{% else %}<a href="{{ document.file.url }}" download>Descargar <span>↓</span></a>{% endif %}
+                </div>
+            </article>
+            {% endfor %}
+        </div>
+        {% else %}<p class="data-empty">Los documentos publicados aparecerán aquí.</p>{% endif %}
+    </section>
+
+    <section class="findings-next-step">
+        <div><p class="eyebrow">Siguiente paso</p><h2>Ahora explora<br><em>tus propias preguntas.</em></h2></div>
+        <div class="findings-next-actions"><a class="button button-dark" href="{% url 'portal:report' %}">Ver informe <span>↗</span></a><a class="button button-outline" href="{% url 'portal:dashboard' %}">Ver dashboard <span>↗</span></a><a class="button button-outline" href="{% url 'portal:territory' %}">Ver mapa <span>↗</span></a></div>
+    </section>
+</main>
+{% endblock %}

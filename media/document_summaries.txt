@@ -1,0 +1,5 @@
+informe_lesiones_personales_2_1.docx
+Informe de analítica de datos que estudia 332.390 casos y 495.272 víctimas de lesiones personales en Colombia entre 2021 y 2025. Presenta el problema, la metodología y el marco teórico, y analiza tendencias anuales y mensuales, medios empleados y género, grupos de edad, días de la semana y distribución regional. Incluye tablas de resultados, una propuesta de dashboard, estrategias de comunicación y conclusiones. Contiene 102 párrafos y 6 tablas.
+
+lesiones_personales_0_1_1_1.xlsx
+Base de datos operativa del proyecto con 16 hojas y aproximadamente 997.406 filas de información. Organiza los registros de lesiones personales por cortes anuales y temáticos para permitir análisis temporal. demográfico y territorial. Entre sus hojas se encuentran: LESIONES PERSONALES 2021. LESIONES PERSONALES 2022. LESIONES PERSONALES 2023. LESIONES PERSONALES 2024. LESIONES PERSONALES 2025 y 11 hojas más. Es la fuente tabular para construir indicadores. segmentaciones y visualizaciones del informe.

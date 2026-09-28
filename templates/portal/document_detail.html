@@ -1,0 +1,137 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}{{ document.title }} · Lesiones personales{% endblock %}
+{% block content %}
+<main class="detail-page">
+    <a class="back-link" href="{% url 'portal:home' %}#documentos">← Volver a documentos</a>
+    <div class="detail-layout">
+        <div>
+            <p class="eyebrow">{{ document.type_label }} <span>●</span> Recurso del proyecto</p>
+            <h1>{{ document.title }}</h1>
+            <p class="detail-summary">{{ document.curated_summary }}</p>
+            <p class="detail-hint">Lee el resumen, explora la vista previa y descarga el recurso completo cuando quieras llevarlo contigo.</p>
+            <div class="detail-actions">
+                <a class="button button-dark" href="#vista-previa">Ver vista previa <span>↓</span></a>
+                {% if document.document_type == 'word' %}<a class="button button-outline" href="{% url 'portal:document_pdf' document.slug %}?download=1">Descargar PDF <span>↓</span></a>{% else %}<a class="button button-outline" href="{{ document.file.url }}" download>Descargar original <span>↓</span></a>{% endif %}
+            </div>
+        </div>
+        <aside class="file-preview file-{{ document.document_type }}">
+            <span class="file-badge">{{ document.document_type|upper }}</span>
+            <div class="preview-icon">▤</div>
+            <p>Recurso analítico disponible</p>
+            <small>Cargado el {{ document.created_at|date:'d/m/Y' }} · {{ document.file_size_label }}</small>
+        </aside>
+    </div>
+
+    <section class="document-viewer" id="vista-previa" aria-label="Vista del documento">
+        <div class="viewer-heading"><span>Vista previa</span><small>Lectura dentro del proyecto</small></div>
+
+        {% if document.document_type == 'word' %}
+            <iframe class="pdf-frame" src="{% url 'portal:document_pdf' document.slug %}" title="Vista previa de {{ document.title }}"></iframe>
+        {% elif document.pdf_url %}
+            <iframe class="pdf-frame" src="{{ document.pdf_url }}" title="Vista previa de {{ document.title }}"></iframe>
+        {% elif preview.kind == 'pdf' %}
+            <iframe class="pdf-frame" src="{{ document.file.url }}" title="Vista previa de {{ document.title }}"></iframe>
+        {% elif preview.kind in 'png jpg jpeg gif webp' %}
+            <img class="image-preview" src="{{ document.file.url }}" alt="Vista previa de {{ document.title }}">
+        {% elif preview.kind == 'docx' and preview.content %}
+            <div class="word-preview">
+                {% for paragraph in preview.content.paragraphs %}<p>{{ paragraph }}</p>{% endfor %}
+                {% for table in preview.content.tables %}<table>{% for row in table %}<tr>{% for cell in row %}<td>{{ cell }}</td>{% endfor %}</tr>{% endfor %}</table>{% endfor %}
+                {% if preview.content.images %}<div class="word-images">{% for image in preview.content.images %}<img src="{{ image.src }}" alt="Imagen del documento">{% endfor %}</div>{% endif %}
+            </div>
+        {% elif preview.kind == 'xlsx' and preview.content %}
+            <div class="interactive-dashboard" data-dashboard-root>
+                {{ preview.dashboard|json_script:"dashboard-data" }}
+
+                <div class="dashboard-controls">
+                    <label>
+                        <span>Año</span>
+                        <select id="dashboard-year">
+                            <option value="Todos">Todos</option>
+                        </select>
+                    </label>
+                    <label>
+                        <span>Región</span>
+                        <select id="dashboard-region">
+                            <option value="Todos">Todas</option>
+                        </select>
+                    </label>
+                    <label>
+                        <span>Genero</span>
+                        <select id="dashboard-gender">
+                            <option value="Todos">Todos</option>
+                        </select>
+                    </label>
+                    <label>
+                        <span>Grupo de edad</span>
+                        <select id="dashboard-age">
+                            <option value="Todos">Todos</option>
+                        </select>
+                    </label>
+                </div>
+
+                <div class="dashboard-kpis">
+                    <div>
+                        <span>Total víctimas</span>
+                        <strong id="kpi-total">0</strong>
+                    </div>
+                    <div>
+                        <span>Año con más casos</span>
+                        <strong id="kpi-top-year">-</strong>
+                    </div>
+                    <div>
+                        <span>Municipios</span>
+                        <strong id="kpi-municipios">0</strong>
+                    </div>
+                </div>
+
+                <div class="dashboard-grid">
+                    <article class="dashboard-chart-panel">
+                        <h3>Tendencia anual</h3>
+                        <canvas id="annual-chart"></canvas>
+                    </article>
+                    <article class="dashboard-chart-panel">
+                        <h3>Distribución regional</h3>
+                        <canvas id="regions-chart"></canvas>
+                    </article>
+                    <article class="dashboard-chart-panel">
+                        <h3>Género</h3>
+                        <canvas id="gender-chart"></canvas>
+                        <div id="gender-legend" class="dashboard-chart-legend" aria-label="Detalle del gráfico de género"></div>
+                    </article>
+                    <article class="dashboard-chart-panel">
+                        <h3>Medios empleados</h3>
+                        <canvas id="weapons-chart"></canvas>
+                        <div id="weapons-legend" class="dashboard-chart-legend" aria-label="Detalle del gráfico de medios empleados"></div>
+                    </article>
+                    <article class="dashboard-chart-panel">
+                        <h3>Grupos de edad</h3>
+                        <canvas id="ages-chart"></canvas>
+                    </article>
+                </div>
+            </div>
+        {% elif preview.kind == 'pptx' and preview.content %}
+            <div class="slides-preview">
+                {% for slide in preview.content %}
+                    <article class="slide-card">
+                        <span>Diapositiva {{ slide.number }}</span>
+                        {% if slide.title %}<h4>{{ slide.title }}</h4>{% endif %}
+                        {% if slide.texts %}
+                            <ul>
+                                {% for text in slide.texts|slice:':4' %}
+                                    <li>{{ text }}</li>
+                                {% endfor %}
+                            </ul>
+                        {% endif %}
+                    </article>
+                {% endfor %}
+            </div>
+        {% elif preview.error %}
+            <div class="viewer-message"><strong>{{ preview.error }}</strong><p>El archivo seguirá disponible mediante el botón de descarga.</p></div>
+        {% else %}
+            <div class="viewer-message"><strong>Este formato no tiene vista previa web disponible.</strong><p>El archivo está publicado y puedes descargarlo desde el botón superior.</p></div>
+        {% endif %}
+    </section>
+</main>
+{% endblock %}

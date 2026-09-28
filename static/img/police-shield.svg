@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 140" role="img" aria-labelledby="title">
+  <title>Escudo de la Policía Nacional</title>
+  <path d="M60 4 112 20v43c0 35-22 59-52 73C30 122 8 98 8 63V20Z" fill="#174d7a" stroke="#d7b557" stroke-width="5"/>
+  <path d="M60 19 98 31v31c0 25-14 44-38 57C36 106 22 87 22 62V31Z" fill="#fff"/>
+  <path d="M60 25 68 47l23 1-18 14 6 23-19-13-19 13 6-23-18-14 23-1Z" fill="#d7b557"/>
+  <circle cx="60" cy="62" r="12" fill="#174d7a"/>
+  <path d="M40 101h40" stroke="#174d7a" stroke-width="5" stroke-linecap="round"/>
+</svg>

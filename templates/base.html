@@ -1,0 +1,62 @@
+{% load static %}
+<!doctype html>
+<html lang="es">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}Lesiones personales en Colombia{% endblock %}</title>
+    <meta name="description" content="Proyecto de identificación, cuantificación y visualización de patrones de lesiones personales en Colombia.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'css/site.css' %}?v=20">
+    <link rel="stylesheet" href="{% static 'css/dashboard.css' %}?v=3">
+    <link rel="stylesheet" href="{% static 'css/overrides.css' %}?v=5">
+    {% block extra_head %}{% endblock %}
+</head>
+<body>
+    <div class="scroll-progress" data-scroll-progress aria-hidden="true"></div>
+    <header class="site-header">
+        <a class="brand" href="{% url 'portal:home' %}">
+            <img class="brand-logo" src="{% static 'img/logo.png' %}" alt="Logo del Observatorio de lesiones personales" width="40" height="40">
+            <span>Observatorio<br><strong>Lesiones personales</strong></span>
+        </a>
+        <button class="menu-toggle" aria-label="Abrir menú" aria-expanded="false">☰</button>
+        <nav class="main-nav" aria-label="Navegación principal">
+            <a href="{% url 'portal:dashboard' %}" class="nav-action" data-nav-key="dashboard">Ver dashboard</a>
+            <a href="{% url 'portal:home' %}#proyecto" class="nav-action">El proyecto</a>
+            <a href="{% url 'portal:methodology' %}" class="nav-action" data-nav-key="methodology">Metodología</a>
+            <a href="{% url 'portal:home' %}#documentos" class="nav-action">Documentos</a>
+            <a href="{% url 'portal:territory' %}" class="nav-action" data-nav-key="territory">Ver mapa</a>
+            <a class="nav-action nav-action-primary" href="{% url 'portal:findings' %}" title="Ver los hallazgos principales del proyecto">Ver hallazgos <span>↗</span></a>
+        </nav>
+        <a class="police-link" href="https://www.policia.gov.co/estadistica-delictiva-old" target="_blank" rel="noopener" aria-label="Consultar estadísticas oficiales de la Policía Nacional">
+            <img class="police-shield" src="{% static 'img/Escudo_Policía_Nacional_de_Colombia.png' %}" alt="Escudo de la Policía Nacional" width="36" height="36"><span>Fuente institucional<br><strong>Policía Nacional</strong> <b>↗</b></span>
+        </a>
+    </header>
+    {% block content %}{% endblock %}
+    <section class="project-chat" data-chat-widget aria-label="Asistente del proyecto">
+        <button class="chat-launcher" type="button" aria-expanded="false" aria-controls="project-chat-panel" title="Mostrar u ocultar el asistente del proyecto">
+            <span class="chat-launcher-icon" aria-hidden="true">✦</span><span class="chat-launcher-label">Pregúntale al proyecto</span>
+        </button>
+        <div class="chat-panel" id="project-chat-panel" hidden>
+            <div class="chat-panel-header"><div><span class="chat-kicker">Guía del proyecto</span><h2>Elige qué quieres consultar</h2></div><button class="chat-close" type="button" aria-label="Cerrar chat">×</button></div>
+            <div class="chat-messages" data-chat-messages aria-live="polite"><div class="chat-message chat-message-assistant">Selecciona un tema y después una pregunta. Las respuestas están construidas con la documentación publicada y los datos del dashboard.</div></div>
+            <div class="chat-progress" data-chat-progress>Paso 1 de 2 · Elige un tema</div>
+            <div class="chat-suggestions" data-chat-suggestions aria-label="Preguntas rápidas"></div>
+            <div class="chat-choice-grid" data-chat-categories aria-label="Temas de consulta"></div>
+            <div class="chat-choice-grid chat-question-list" data-chat-questions aria-label="Preguntas disponibles" hidden></div>
+            <form class="chat-form chat-form-hidden" data-chat-form>{% csrf_token %}<select id="chat-category" data-chat-category required aria-hidden="true" tabindex="-1"></select><select id="chat-question" data-chat-question required disabled aria-hidden="true" tabindex="-1"></select><button type="submit" title="Consultar respuesta">Consultar <span aria-hidden="true">↗</span></button></form>
+            <button class="chat-back" data-chat-back type="button" hidden>← Cambiar de tema</button>
+            <p class="chat-disclaimer">Banco de preguntas local. Sin conexión externa ni respuestas inventadas.</p>
+        </div>
+    </section>
+    <footer class="site-footer">
+        <div><img class="brand-logo small" src="{% static 'img/logo.png' %}" alt="Logo del Observatorio de lesiones personales" width="32" height="32" loading="lazy"> <strong>Observatorio de lesiones personales</strong></div>
+        <span>Colombia · 2021—2025</span>
+    </footer>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js" defer></script>
+    <script src="{% static 'js/site.js' %}?v=7" defer></script>
+    {% block extra_scripts %}{% endblock %}
+</body>
+</html>

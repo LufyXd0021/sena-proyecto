@@ -1,0 +1,78 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}Dashboard · Lesiones personales en Colombia{% endblock %}
+{% block content %}
+<main class="dashboard-page">
+    <section class="dashboard-generated-report" id="informe-generado" hidden>
+        {% csrf_token %}<div class="generated-report-heading"><div><p class="eyebrow">Informe generado</p><h2>Lectura técnica<br><em>de tu consulta.</em></h2></div><div class="generated-report-actions"><button class="dashboard-tool-button" id="dashboard-download-report" type="button">Descargar PDF</button><button class="dashboard-tool-button" id="dashboard-download-text" type="button">Descargar TXT</button><button class="dashboard-tool-button" id="dashboard-print-report" type="button">Imprimir</button></div></div>
+        <pre id="dashboard-report-text" aria-live="polite"></pre>
+    </section>
+    <section class="dashboard-hero">
+        <div>
+            <p class="eyebrow">Panel de exploración <span>●</span> 2021—2025</p>
+            <h1>Encuentra el patrón<br><em>en los datos.</em></h1>
+            <p class="hero-intro">Cruza tiempo, territorio y perfil poblacional para pasar de una cifra general a una lectura concreta del fenómeno.</p>
+            <div class="hero-actions">
+                <a class="button button-dark" href="#explorador">Ver dashboard <span>↘</span></a>
+                <a class="text-link" href="{% url 'portal:territory' %}">Ver mapa <span>→</span></a>
+            </div>
+        </div>
+        <div class="dashboard-hero-note">
+            <span class="dashboard-hero-note-label">Lectura rápida</span>
+            <strong>{{ insights.peak_year }}</strong>
+            <p>fue el año con mayor volumen registrado: {{ insights.peak_value }} víctimas.</p>
+            <a href="#hallazgos">Ver contexto <span>↗</span></a>
+        </div>
+    </section>
+
+    <section class="section dashboard-intro" id="hallazgos">
+        <div class="section-heading">
+            <p class="eyebrow">Antes de filtrar</p>
+            <h2>Una vista general<br><em>para orientarte.</em></h2>
+        </div>
+        <div class="dashboard-story-grid">
+            <article><span>01</span><strong>{{ insights.total_victims }}</strong><p>Víctimas registradas en el periodo de análisis.</p></article>
+            <article><span>02</span><strong>{{ insights.top_region.share }}</strong><p>Participación acumulada de la región con mayor concentración.</p></article>
+            <article><span>03</span><strong>{{ insights.peak_reduction }}</strong><p>Variación desde el pico de {{ insights.peak_year }} hasta el cierre del periodo.</p></article>
+        </div>
+    </section>
+
+    <section class="section dashboard-explorer" id="explorador">
+        <div class="dashboard-section-heading">
+            <div><p class="eyebrow">Explorador interactivo</p><h2>Haz una pregunta<br><em>con tus filtros.</em></h2></div>
+            <p>Selecciona una combinación y observa cómo se actualizan los indicadores y gráficos. Restablecer vuelve a la vista completa.</p>
+        </div>
+        <div class="interactive-dashboard" data-dashboard-root data-dashboard-endpoint="{% url 'portal:dashboard_api' %}">
+            <div class="dashboard-filter-heading"><span>Configura la lectura</span><small>Actualización inmediata</small></div>
+            <div class="dashboard-controls">
+                <label><span>Año</span><select id="dashboard-year"><option value="Todos">Todos</option></select></label>
+                <label><span>Región</span><select id="dashboard-region"><option value="Todos">Todas</option></select></label>
+                <label><span>Género</span><select id="dashboard-gender"><option value="Todos">Todos</option></select></label>
+                <label><span>Grupo de edad</span><select id="dashboard-age"><option value="Todos">Todos</option></select></label>
+            </div>
+            <div class="dashboard-toolbar"><span id="dashboard-filter-status" aria-live="polite">Vista completa · sin filtros activos</span><div><button class="dashboard-tool-button" id="dashboard-reset" type="button">Restablecer</button><button class="dashboard-tool-button" id="dashboard-export" type="button">Exportar CSV</button><button class="dashboard-tool-button" id="dashboard-print" type="button">Exportar dashboard PDF</button><button class="dashboard-tool-button" id="dashboard-present" type="button">Modo presentación</button><button class="dashboard-tool-button" id="dashboard-generate-report" type="button">Generar informe</button></div></div>
+            <div class="dashboard-share-row"><button class="dashboard-tool-button" id="dashboard-copy-link" type="button">Copiar enlace</button><span id="dashboard-copy-status" aria-live="polite"></span></div>
+            <div class="dashboard-kpis">
+                <div><span>Total víctimas</span><strong id="kpi-total">0</strong></div>
+                <div><span>Año con más casos</span><strong id="kpi-top-year">-</strong></div>
+                <div><span>Municipios</span><strong id="kpi-municipios">0</strong></div>
+            </div>
+            <div class="dashboard-grid">
+                <article class="dashboard-chart-panel"><h3>Tendencia anual</h3><canvas id="annual-chart"></canvas></article>
+                <article class="dashboard-chart-panel"><h3>Distribución regional</h3><canvas id="regions-chart"></canvas></article>
+                <article class="dashboard-chart-panel"><h3>Género</h3><canvas id="gender-chart"></canvas><div id="gender-legend" class="dashboard-chart-legend" aria-label="Detalle del gráfico de género"></div></article>
+                <article class="dashboard-chart-panel"><h3>Medios empleados</h3><canvas id="weapons-chart"></canvas><div id="weapons-legend" class="dashboard-chart-legend" aria-label="Detalle del gráfico de medios empleados"></div></article>
+                <article class="dashboard-chart-panel"><h3>Grupos de edad</h3><canvas id="ages-chart"></canvas></article>
+            </div>
+            <p class="dashboard-source">Fuente: SIEDCO · Policía Nacional. La lectura se actualiza sobre los registros publicados por el proyecto.</p>
+        </div>
+    </section>
+
+    <section class="dashboard-history" id="dashboard-history" hidden><div><p class="eyebrow">Consultas recientes</p><h2>Informes que ya<br><em>generaste.</em></h2></div><div id="dashboard-history-list"></div></section>
+
+    <section class="section dashboard-recommendations" id="recomendaciones-dashboard">
+        <div class="dashboard-section-heading"><div><p class="eyebrow">Aplicación práctica</p><h2>Qué hacer con<br><em>lo que vemos.</em></h2></div><p>Recomendaciones derivadas de los patrones descriptivos del informe y listas para orientar una conversación institucional.</p></div>
+        <div class="dashboard-recommendation-grid"><article><span>01 · Tiempo</span><h3>Preparar el fin de semana</h3><p>Usar el día con mayor registro, {{ report_summary.top_day.label|title }}, y la participación de fin de semana, {{ report_summary.weekend_share }}, para programar prevención y atención.</p></article><article><span>02 · Territorio</span><h3>Combinar volumen y tendencia</h3><p>La concentración en {{ insights.top_region.label|title }} debe leerse junto con el cambio relativo de cada región, no solo con el número absoluto.</p></article><article><span>03 · Población</span><h3>Enfocar la prevención</h3><p>El predominio de {{ insights.top_age.label|title }} orienta campañas de convivencia en espacios y horarios donde se acumulan los registros.</p></article><article><span>04 · Seguimiento</span><h3>Medir cada intervención</h3><p>Revisar anualmente la variación, la concentración dominical y la composición por género para saber si las acciones cambian el patrón.</p></article></div>
+    </section>
+</main>
+{% endblock %}

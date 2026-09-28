@@ -1,0 +1,68 @@
+{% extends 'base.html' %}
+{% block title %}Metodología y glosario · Lesiones personales{% endblock %}
+{% block content %}
+<main class="methodology-page">
+    <section class="methodology-hero">
+        <div>
+            <p class="eyebrow">Método y glosario <span>●</span> 2021—2025</p>
+            <h1>Entender el dato<br><em>antes de interpretarlo.</em></h1>
+            <p class="hero-intro">Esta página explica qué se midió, cómo se organizó la información y qué significan las categorías que aparecen en el dashboard.</p>
+            <div class="hero-actions"><a class="button button-dark" href="#glosario">Ver glosario <span>↘</span></a><a class="text-link" href="{% url 'portal:report' %}">Ver informe <span>→</span></a></div>
+        </div>
+        <aside class="methodology-hero-card"><span>Alcance del estudio</span><strong>332.390</strong><p>filas analizadas, 6 regiones, 32 departamentos y 1.020 municipios cubiertos.</p></aside>
+    </section>
+
+    <section class="section methodology-overview">
+        <div class="section-heading"><p class="eyebrow">Ficha técnica</p><h2>Cómo se construyó<br><em>esta lectura.</em></h2></div>
+        <div class="methodology-facts">
+            <article><span>Fuente</span><strong>SIEDCO</strong><p>Registros oficiales de lesiones personales de la Policía Nacional de Colombia.</p></article>
+            <article><span>Periodo</span><strong>2021—2025</strong><p>La base disponible no incluye 2020 ni años anteriores.</p></article>
+            <article><span>Variables</span><strong>26 columnas</strong><p>Tiempo, territorio, medio empleado, género, edad y cantidad.</p></article>
+            <article><span>Medida</span><strong>CANTIDAD</strong><p>La suma representa 495.272 víctimas o casos agregados en las tablas operativas.</p></article>
+        </div>
+    </section>
+
+    <section class="section methodology-process">
+        <div class="methodology-process-heading"><p class="eyebrow">Proceso analítico</p><h2>De la base<br><em>a la pregunta.</em></h2></div>
+        <div class="methodology-steps">
+            <article><b>01</b><h3>Integrar</h3><p>Se trabaja con una hoja unificada de 332.390 filas y 26 columnas, organizada como panel temporal-territorial.</p></article>
+            <article><b>02</b><h3>Comparar</h3><p>Se calculan frecuencias absolutas, participaciones porcentuales, variaciones interanuales, razones e índices base 100.</p></article>
+            <article><b>03</b><h3>Explorar</h3><p>Las consultas cruzan año, mes, día, región, género, grupo de edad y armas o medios empleados.</p></article>
+            <article><b>04</b><h3>Comunicar</h3><p>Los resultados se convierten en tablas, gráficos, mapa, documentos descargables y un asistente de preguntas.</p></article>
+        </div>
+    </section>
+
+    <section class="section glossary-section" id="glosario">
+        <div class="section-heading"><p class="eyebrow">Glosario del informe</p><h2>Palabras para leer<br><em>sin perder el contexto.</em></h2><p class="glossary-count" data-glossary-count>36 categorías de armas y medios · 13 conceptos metodológicos</p></div>
+        <div class="glossary-tools"><label for="glossary-search">Buscar en el glosario</label><input id="glossary-search" data-glossary-search type="search" placeholder="Ej. región, arma, KPI..."><div class="glossary-filters" role="group" aria-label="Filtrar familias del glosario"><button type="button" class="is-active" data-glossary-filter="all">Todo</button><button type="button" data-glossary-filter="sustancias">Sustancias</button><button type="button" data-glossary-filter="armas">Armas</button><button type="button" data-glossary-filter="objetos">Objetos</button><button type="button" data-glossary-filter="territorio">Territorio</button><button type="button" data-glossary-filter="dashboard">Dashboard</button></div></div>
+        <div class="glossary-family-grid">
+            <details class="glossary-family" data-glossary-family="sustancias" open><summary>Sustancias químicas y tóxicas · 10 categorías</summary><div class="glossary-terms">
+                <p><strong>Ácido:</strong> sustancia corrosiva que puede causar quemaduras o lesiones al entrar en contacto con el cuerpo.</p><p><strong>Alucinógenos:</strong> sustancias que alteran la percepción, los sentidos, el estado de conciencia o el comportamiento.</p><p><strong>Escopolamina:</strong> sustancia que puede alterar el estado de conciencia y las capacidades de una persona.</p><p><strong>Gases:</strong> sustancias gaseosas que pueden provocar intoxicación, irritación, asfixia u otros efectos.</p><p><strong>Químicos:</strong> sustancias que pueden provocar intoxicación, quemaduras, irritación u otros daños físicos.</p><p><strong>Sustancias tóxicas:</strong> sustancias que producen intoxicación, lesiones o daños por contacto, inhalación o ingestión.</p><p><strong>Veneno:</strong> sustancia tóxica que puede causar intoxicación, lesiones graves o muerte.</p><p><strong>Alimentos vencidos:</strong> alimentos fuera de su fecha de vencimiento que pueden representar un riesgo para la salud.</p><p><strong>Medicamentos:</strong> sustancias farmacológicas que pueden causar efectos adversos o intoxicación por uso inadecuado.</p><p><strong>Licor adulterado:</strong> bebida alcohólica modificada o con sustancias diferentes a las autorizadas.</p>
+            </div></details>
+            <details class="glossary-family" data-glossary-family="armas"><summary>Armas, explosivos e incendiarios · 15 categorías</summary><div class="glossary-terms">
+                <p><strong>Arma blanca:</strong> instrumento con filo, punta o capacidad de corte utilizado para causar lesiones.</p><p><strong>Arma traumática:</strong> arma que utiliza proyectiles de impacto y puede producir lesiones físicas.</p><p><strong>Artefacto explosivo:</strong> dispositivo diseñado para producir una explosión capaz de generar daños o lesiones.</p><p><strong>Artefacto incendiario:</strong> dispositivo destinado a provocar fuego o incendios mediante llamas o calor.</p><p><strong>Carro bomba:</strong> vehículo acondicionado para transportar y detonar un artefacto explosivo.</p><p><strong>Cilindro bomba:</strong> artefacto explosivo acondicionado usando un cilindro como recipiente.</p><p><strong>Dron/explosivo:</strong> dron utilizado para transportar o emplear un artefacto explosivo.</p><p><strong>Granada de mano:</strong> artefacto explosivo diseñado para ser lanzado manualmente.</p><p><strong>Mina antipersonal:</strong> artefacto diseñado para causar lesiones o muerte mediante su activación.</p><p><strong>Olla bomba:</strong> artefacto explosivo improvisado elaborado con un recipiente metálico o similar.</p><p><strong>Papa explosiva:</strong> artefacto explosivo improvisado de pequeño tamaño.</p><p><strong>Paquete bomba:</strong> paquete que contiene o simula contener un artefacto explosivo.</p><p><strong>Pólvora:</strong> material pirotécnico o explosivo que puede causar fuego, explosiones o lesiones.</p><p><strong>Rocket:</strong> artefacto propulsado que puede transportar una carga explosiva o producir impacto.</p><p><strong>Combustible:</strong> sustancia inflamable utilizada para generar fuego, quemaduras o incendios.</p>
+            </div></details>
+            <details class="glossary-family" data-glossary-family="objetos"><summary>Objetos de sujeción, asfixia y uso cotidiano · 6 categorías</summary><div class="glossary-terms">
+                <p><strong>Almohada:</strong> objeto utilizado para cubrir vías respiratorias o ejercer presión.</p><p><strong>Bolsa plástica:</strong> elemento que puede cubrir las vías respiratorias y provocar asfixia.</p><p><strong>Cintas/cinturón:</strong> elementos utilizados para sujetar, inmovilizar o ejercer presión.</p><p><strong>Jeringa:</strong> instrumento que puede causar lesiones mediante punción o inyección.</p><p><strong>Prendas de vestir:</strong> elementos de vestir utilizados o relacionados con una lesión.</p><p><strong>Agua caliente:</strong> agua a alta temperatura utilizada para causar quemaduras o lesiones.</p>
+            </div></details>
+            <details class="glossary-family" data-glossary-family="objetos" ><summary>Vehículos y animales · 3 categorías</summary><div class="glossary-terms">
+                <p><strong>Moto:</strong> motocicleta utilizada como medio o elemento relacionado con el hecho.</p><p><strong>Vehículos:</strong> vehículos utilizados para causar lesiones, transportar elementos o intervenir en el hecho.</p><p><strong>Perro:</strong> animal utilizado para causar lesiones, intimidar o atacar.</p>
+            </div></details>
+            <details class="glossary-family" data-glossary-family="armas"><summary>Sin arma o sin dato · 2 categorías</summary><div class="glossary-terms">
+                <p><strong>Sin empleo de armas:</strong> el hecho ocurrió sin armas, objetos o medios identificables.</p><p><strong>No reportado:</strong> no se registró o no se informó el arma o medio utilizado.</p>
+            </div></details>
+            <details class="glossary-family" data-glossary-family="territorio"><summary>Variables demográficas y territoriales</summary><div class="glossary-terms">
+                <p><strong>Sexo:</strong> variable con las categorías Femenino, Masculino y No reportado.</p><p><strong>Agrupa edad persona:</strong> clasifica en Menores, Adolescentes, Adultos y No reportado.</p><p><strong>Región:</strong> agrupación geográfica de seis regiones naturales: Caribe, Andina, Pacífica, Orinoquía, Amazonía e Insular.</p><p><strong>Departamento:</strong> división político-administrativa; el informe cubre los 32 departamentos.</p><p><strong>Municipio:</strong> subdivisión departamental; la base cubre 1.020 de 1.103 municipios, el 92,48%.</p><p><strong>Código DANE:</strong> identificador numérico para estandarizar entidades territoriales.</p>
+            </div></details>
+            <details class="glossary-family" data-glossary-family="dashboard"><summary>Dashboard y medidas estadísticas</summary><div class="glossary-terms">
+                <p><strong>Tabla dinámica y segmentador:</strong> herramientas de Excel para resumir y filtrar datos sin alterar el origen.</p><p><strong>Dashboard:</strong> panel que integra indicadores y gráficos para comprender un fenómeno de un vistazo.</p><p><strong>KPI:</strong> cifra que resume un aspecto relevante y accionable del fenómeno.</p><p><strong>Variación interanual:</strong> cambio relativo de un año frente al anterior.</p><p><strong>Razón:</strong> comparación proporcional entre dos categorías, como hombres por cada mujer.</p><p><strong>Índice base 100:</strong> técnica para comparar la evolución relativa de series de distinta magnitud.</p><p><strong>CANTIDAD:</strong> variable de conteo cuya suma alcanza 495.272 víctimas o casos agregados.</p>
+            </div></details>
+        </div>
+    </section>
+
+    <section class="methodology-limitations">
+        <div><p class="eyebrow">Lectura responsable</p><h2>Qué sí explica<br><em>y qué no.</em></h2></div>
+        <div><p>El análisis describe patrones de los registros disponibles; no establece causalidad ni reemplaza una investigación penal o epidemiológica.</p><p>El alcance territorial final se trabaja a nivel de región porque se identificaron inconsistencias de mayúsculas y minúsculas en nombres de municipios. Para explorar el detalle disponible, consulta el mapa y sus filtros.</p><a class="button button-outline" href="{% url 'portal:findings' %}">Ver hallazgos <span>↗</span></a></div>
+    </section>
+</main>
+{% endblock %}

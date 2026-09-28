@@ -1,0 +1,73 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}Territorio · Lesiones personales{% endblock %}
+{% block extra_head %}
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+{% endblock %}
+{% block content %}
+<main>
+    <section class="section map-section" id="mapa-colombia" aria-label="Mapa interactivo de Colombia">
+        <div class="section-heading" style="padding:0 var(--page-x,48px)">
+            <p class="eyebrow">Dimensión territorial</p>
+            <h1>Mapa interactivo<br><em>de Colombia.</em></h1>
+            <p style="color:#8fa8a0;max-width:560px;margin-top:10px">¿Dónde se concentra el fenómeno? Ajusta los filtros para comparar departamentos, regiones y perfiles. El mapa y el ranking responden en tiempo real.</p>
+        </div>
+
+        <div class="map-filters" role="search" aria-label="Filtros del mapa territorial">
+            <div class="map-filter-group"><label for="map-filter-year">Año</label><select id="map-filter-year"><option value="">Todos los años</option></select></div>
+            <div class="map-filter-group"><label for="map-filter-month">Mes</label><select id="map-filter-month"><option value="">Todos los meses</option></select></div>
+            <div class="map-filter-group"><label for="map-filter-region">Región</label><select id="map-filter-region"><option value="">Todas las regiones</option></select></div>
+            <div class="map-filter-group"><label for="map-filter-dept">Departamento</label><select id="map-filter-dept"><option value="">Todos los departamentos</option></select></div>
+            <div class="map-filter-group"><label for="map-filter-sex">Sexo</label><select id="map-filter-sex"><option value="">Todos</option></select></div>
+            <div class="map-filter-group"><label for="map-filter-age">Grupo de edad</label><select id="map-filter-age"><option value="">Todos los grupos</option></select></div>
+            <div class="map-filter-group" style="justify-content:flex-end">
+                <button id="map-reset-btn" class="map-reset-btn" type="button" aria-label="Nueva lectura">↺ Nueva lectura</button>
+                <button id="map-export-btn" class="map-reset-btn" type="button" aria-label="Descargar CSV">↓ Descargar CSV</button>
+                <button id="map-image-btn" class="map-reset-btn" type="button" aria-label="Descargar informe territorial en PNG">▧ Descargar informe PNG</button>
+            </div>
+        </div>
+        <div class="map-active-filters" id="map-active-filters" aria-live="polite">Vista nacional · sin filtros activos</div>
+        <div class="map-reading" id="map-reading" aria-live="polite">Cargando lectura territorial...</div>
+
+        <div class="map-body">
+            <div class="map-wrap">
+                <div id="colombia-map-container" role="img" aria-label="Mapa coroplético de Colombia por víctimas de lesiones personales"></div>
+                <div id="map-tooltip" role="tooltip"></div>
+                <div id="map-loading" aria-label="Cargando datos del mapa"><div class="map-spinner"></div></div>
+                <div class="map-legend-bar" id="map-legend" aria-label="Escala de intensidad del mapa"></div>
+            </div>
+
+            <aside class="map-side-panel" aria-label="Estadísticas del mapa territorial">
+                <div class="map-kpi-card">
+                    <div class="kpi-label">Víctimas en selección</div>
+                    <span class="kpi-value" id="map-total-counter">—</span>
+                    <div class="kpi-sub">Total filtrado · actualización automática</div>
+                </div>
+
+                <div class="dept-ranking" aria-label="Ranking de departamentos">
+                    <div class="dept-ranking-header">Ranking por departamento</div>
+                    <div class="dept-ranking-scroll">
+                        <table class="dept-ranking-table" aria-label="Tabla de víctimas por departamento">
+                            <colgroup>
+                                <col style="width:30px">
+                                <col>
+                                <col style="width:80px">
+                                <col style="width:48px">
+                                <col style="width:70px">
+                            </colgroup>
+                            <tbody id="dept-table-body">
+                                <tr><td colspan="5" style="text-align:center;color:#52615c;padding:20px">Cargando datos...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </aside>
+        </div>
+    </section>
+</main>
+{% endblock %}
+{% block extra_scripts %}
+    <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin="" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js" defer></script>
+    <script src="{% static 'js/colombia-map.js' %}?v=8" defer></script>
+{% endblock %}
