@@ -46,8 +46,8 @@ if not PROJECT_PUBLIC_URL and RENDER_EXTERNAL_HOSTNAME:
 MAX_UPLOAD_SIZE = int(os.environ.get('DJANGO_MAX_UPLOAD_SIZE', 100 * 1024 * 1024))
 if MAX_UPLOAD_SIZE <= 0:
      raise ImproperlyConfigured('DJANGO_MAX_UPLOAD_SIZE debe ser mayor que cero.')
-DATA_UPLOAD_MAX_MEMORY_SIZE = 2.5 * 1024 * 1024
-FILE_UPLOAD_MAX_MEMORY_SIZE = 2.5 * 1024 * 1024
+DATA_UPLOAD_MAX_MEMORY_SIZE = 2_621_440
+FILE_UPLOAD_MAX_MEMORY_SIZE = 2_621_440
 ADMIN_URL = os.environ.get('DJANGO_ADMIN_URL', 'admin/')
 CSRF_TRUSTED_ORIGINS = [origin.strip() for origin in os.environ.get('DJANGO_CSRF_TRUSTED_ORIGINS', '').split(',') if origin.strip()]
 if not DEBUG and RENDER_EXTERNAL_HOSTNAME:

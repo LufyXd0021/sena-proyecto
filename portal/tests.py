@@ -120,6 +120,8 @@ class DocumentViewsTests(TestCase):
 		self.assertTrue(hasattr(settings, 'ADMIN_URL'))
 		self.assertTrue(hasattr(settings, 'CSRF_TRUSTED_ORIGINS'))
 		self.assertIsInstance(settings.CSRF_TRUSTED_ORIGINS, list)
+		self.assertIsInstance(settings.DATA_UPLOAD_MAX_MEMORY_SIZE, int)
+		self.assertIsInstance(settings.FILE_UPLOAD_MAX_MEMORY_SIZE, int)
 		self.assertLess(settings.FILE_UPLOAD_MAX_MEMORY_SIZE, settings.MAX_UPLOAD_SIZE)
 
 	def test_project_qr_returns_png(self):
