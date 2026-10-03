@@ -104,6 +104,7 @@
   var currentMax   = 0;
   var currentTotal = 0;
   var currentDeptTotals = {};
+  var currentMapTotal = 0;
   var countryBounds = null;
 
   function initMap() {
@@ -184,8 +185,8 @@
 
   function onFeatureMouseMove(e) {
     var name  = featureName(e.target.feature);
-    var value = currentData[name] || 0;
-    var pct   = currentTotal > 0 ? ((value / currentTotal) * 100).toFixed(1) : '0.0';
+    var value = currentDeptTotals[name] || 0;
+    var pct   = currentMapTotal > 0 ? ((value / currentMapTotal) * 100).toFixed(1) : '0.0';
     var tip   = getTooltip();
     if (tip) {
       tip.style.display = 'block';
@@ -194,7 +195,7 @@
       tip.innerHTML     =
         '<strong>' + titleCase(name) + '</strong>' +
         '<span>' + value.toLocaleString('es-CO') + ' v\u00edctimas</span>' +
-        '<small>' + pct + '% del total filtrado</small>';
+        '<small>' + pct + '% del total sin filtrar por departamento</small>';
     }
     e.target.setStyle({ weight: 2.5, color: '#c9ed57', fillOpacity: 0.95 });
     e.target.bringToFront();
@@ -301,14 +302,19 @@
       .then(function(r) { return r.json(); })
       .then(function(data) {
         currentData = {};
-        var raw = data.dept_totals || {};
-        currentDeptTotals = raw;
-        Object.keys(raw).forEach(function(k) {
-          currentData[normDept(k)] = raw[k];
+        var selectedTotals = data.dept_totals || {};
+        var mapTotals = data.map_dept_totals || selectedTotals;
+        currentDeptTotals = {};
+        Object.keys(selectedTotals).forEach(function(k) {
+          currentData[normDept(k)] = selectedTotals[k];
+        });
+        Object.keys(mapTotals).forEach(function(k) {
+          currentDeptTotals[normDept(k)] = mapTotals[k];
         });
         var vals = Object.values(currentData);
         currentMax   = vals.length ? Math.max.apply(null, vals) : 1;
         currentTotal = data.total || 0;
+        currentMapTotal = data.map_total || data.total || 0;
         refreshLayer();
         renderDeptTable(data.dept_totals || {});
         renderMapReading(data.dept_totals || {});

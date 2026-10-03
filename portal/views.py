@@ -721,7 +721,9 @@ def map_api(request):
 	Respuesta JSON:
 	  {
 	    "dept_totals": {"ANTIOQUIA": 35000, ...},
+	    "map_dept_totals": {"ANTIOQUIA": 35000, ...},
 	    "total": 495272,
+	    "map_total": 495272,
 	    "filters": {years, months, regions, depts, genders, ages},
 	    "active_filters": {year, month, region, dept, sex, age}
 	  }
@@ -739,6 +741,7 @@ def map_api(request):
 
 	# Recorrer facets y acumular totales por departamento
 	dept_totals = defaultdict(float)
+	map_dept_totals = defaultdict(float)
 	all_years, all_months, all_regions, all_depts, all_genders, all_ages = set(), set(), set(), set(), set(), set()
 
 	for facet in facets:
@@ -763,21 +766,25 @@ def map_api(request):
 		if f_year   and year   != f_year:                    continue
 		if f_month  and month  != f_month:                   continue
 		if f_region and region != f_region:                  continue
-		if f_dept   and dept   != f_dept:                    continue
 		if f_sex    and gender != f_sex:                     continue
 		if f_age    and age    != f_age:                     continue
 
 		if dept:
-			dept_totals[dept] += value
+			map_dept_totals[dept] += value
+			if not f_dept or dept == f_dept:
+				dept_totals[dept] += value
 
 	total = sum(dept_totals.values())
+	map_total = sum(map_dept_totals.values())
 
 	# Ordenar meses por número
 	months_sorted = sorted(all_months, key=lambda item: int(item[0]) if item[0].isdigit() else 99)
 
 	return JsonResponse({
 		'dept_totals': {k: int(v) for k, v in sorted(dept_totals.items(), key=lambda item: -item[1])},
+		'map_dept_totals': {k: int(v) for k, v in sorted(map_dept_totals.items(), key=lambda item: -item[1])},
 		'total': int(total),
+		'map_total': int(map_total),
 		'active_filters': {
 			'year': f_year, 'month': f_month, 'region': f_region,
 			'dept': f_dept, 'sex': f_sex, 'age': f_age,

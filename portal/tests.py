@@ -238,8 +238,28 @@ class DocumentViewsTests(TestCase):
 		payload = response.json()
 		self.assertEqual(response.status_code, 200)
 		self.assertIn('dept_totals', payload)
+		self.assertIn('map_dept_totals', payload)
 		self.assertIn('filters', payload)
 		self.assertIn('active_filters', payload)
+
+	@patch('portal.views.dashboard_preview_data')
+	def test_map_api_keeps_other_department_counts_available_for_hover(self, dashboard_data):
+		dashboard_data.return_value = {
+			'facets': [
+				{'year': '2025', 'region': 'REGION ANDINA', 'dept': 'BOYACÁ', 'month': '1', 'month_name': 'ENERO', 'gender': 'MASCULINO', 'age': 'ADULTOS', 'value': '20.580'},
+				{'year': '2025', 'region': 'REGION ANDINA', 'dept': 'CUNDINAMARCA', 'month': '1', 'month_name': 'ENERO', 'gender': 'MASCULINO', 'age': 'ADULTOS', 'value': '150.124'},
+				{'year': '2024', 'region': 'REGION ANDINA', 'dept': 'BOYACÁ', 'month': '1', 'month_name': 'ENERO', 'gender': 'MASCULINO', 'age': 'ADULTOS', 'value': '10'},
+			],
+		}
+
+		response = self.client.get(reverse('portal:map_api'), {'dept': 'BOYACÁ', 'year': '2025'})
+		payload = response.json()
+
+		self.assertEqual(payload['dept_totals'], {'BOYACÁ': 20580})
+		self.assertEqual(payload['total'], 20580)
+		self.assertEqual(payload['map_dept_totals'], {'CUNDINAMARCA': 150124, 'BOYACÁ': 20580})
+		self.assertEqual(payload['map_total'], 170704)
+		self.assertEqual(payload['active_filters']['dept'], 'BOYACÁ')
 
 	def test_chat_lists_question_categories(self):
 		response = self.client.get(reverse('portal:chat'))
