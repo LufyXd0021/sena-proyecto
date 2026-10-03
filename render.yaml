@@ -10,7 +10,7 @@ services:
     runtime: python
     plan: free
     buildCommand: pip install -r requirements.txt && python manage.py collectstatic --noinput
-    startCommand: python manage.py migrate && python manage.py create_admin_from_env && python serve.py
+    startCommand: python manage.py migrate && python manage.py sync_repository_documents && python manage.py create_admin_from_env && python serve.py
     envVars:
       - key: DJANGO_DEBUG
         value: "False"

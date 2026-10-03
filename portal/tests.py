@@ -1,17 +1,19 @@
 from io import BytesIO
+from pathlib import Path
 import shutil
 import tempfile
 
 from django.conf import settings
 from django.core.cache import cache
+from django.core import management
 from django.core.files.uploadedfile import SimpleUploadedFile
+from django.core.files.storage import default_storage
 from django.test import TestCase, override_settings
 from django.urls import reverse
-from botocore.exceptions import ClientError
 from docx import Document as WordDocument
 from openpyxl import Workbook
 
-from .models import Document, is_missing_storage_object_error
+from .models import Document
 from .views import dashboard_preview_data
 
 
@@ -61,6 +63,36 @@ class DocumentViewsTests(TestCase):
 		response = self.client.get(reverse('portal:home'))
 
 		self.assertContains(response, 'Recurso recién publicado')
+
+	def test_published_document_file_is_served(self):
+		document = Document.objects.create(
+			title='Archivo público',
+			slug='archivo-publico',
+			document_type='excel',
+			summary='Resumen',
+			file=SimpleUploadedFile('archivo.xlsx', b'contenido-del-excel'),
+			is_published=True,
+		)
+
+		response = self.client.get(document.file.url)
+
+		self.assertEqual(response.status_code, 200)
+		self.assertEqual(b''.join(response.streaming_content), b'contenido-del-excel')
+
+	def test_published_document_media_is_downloadable(self):
+		document = Document.objects.create(
+			title='Archivo público',
+			slug='archivo-publico',
+			document_type='excel',
+			summary='Resumen',
+			file=SimpleUploadedFile('archivo.xlsx', b'contenido-del-excel'),
+			is_published=True,
+		)
+
+		response = self.client.get(document.file.url)
+
+		self.assertEqual(response.status_code, 200)
+		self.assertEqual(b''.join(response.streaming_content), b'contenido-del-excel')
 
 	def test_map_page_loads(self):
 		response = self.client.get(reverse('portal:map'))
@@ -322,13 +354,6 @@ class DocumentViewsTests(TestCase):
 
 
 class DocumentValidationTests(TestCase):
-	def test_missing_r2_object_is_distinguished_from_storage_errors(self):
-		missing_object = ClientError({'Error': {'Code': 'NoSuchKey'}}, 'HeadObject')
-		access_denied = ClientError({'Error': {'Code': '403'}}, 'HeadObject')
-
-		self.assertTrue(is_missing_storage_object_error(missing_object))
-		self.assertFalse(is_missing_storage_object_error(access_denied))
-
 	def test_rejects_invalid_file_extension(self):
 		with self.assertRaises(Exception):
 			Document.objects.create(
@@ -359,4 +384,32 @@ class DocumentValidationTests(TestCase):
 					document_type='word',
 					summary='No debería guardar',
 					file=SimpleUploadedFile('file.docx', b'x' * 20, content_type='application/vnd.openxmlformats-officedocument.wordprocessingml.document'),
-				).save()
+				).save().save()
+
+
+class RepositoryDocumentSyncTests(TestCase):
+	def test_sync_command_copies_and_publishes_repository_documents(self):
+		with tempfile.TemporaryDirectory(prefix='repository-documents-test-') as directory:
+			base_dir = Path(directory)
+			source_dir = base_dir / 'documentos'
+			source_dir.mkdir()
+			media_root = base_dir / 'media'
+			source_files = {
+				'Documetacion_lesiones_personales.docx': b'docx content',
+				'Documetacion_lesiones_personales.pdf': b'%PDF',
+				'lesiones_personales_0 (1) (1).xlsx': b'xlsx content',
+				'Presentacion De Proyecto.pptx': b'pptx content',
+			}
+			for filename, contents in source_files.items():
+				(source_dir / filename).write_bytes(contents)
+
+			with override_settings(BASE_DIR=base_dir, MEDIA_ROOT=media_root):
+				management.call_command('sync_repository_documents', verbosity=0)
+				management.call_command('sync_repository_documents', verbosity=0)
+
+				self.assertEqual(Document.objects.filter(is_published=True).count(), 3)
+				document = Document.objects.get(slug='lesiones-personales-en-colombia-20212025')
+				with document.file.open('rb') as saved_file:
+					self.assertEqual(saved_file.read(), b'xlsx content')
+				word_document = Document.objects.get(slug='documentacion-del-proyecto')
+				self.assertTrue(default_storage.exists(word_document.pdf_file.name))

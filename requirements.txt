@@ -1,5 +1,4 @@
 Django==6.1.1
-django-storages[s3]==1.14.6
 asgiref==3.12.1
 sqlparse==0.6.0
 whitenoise==6.8.2

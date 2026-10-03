@@ -19,4 +19,5 @@ urlpatterns = [
     path('qr-proyecto.png', views.project_qr, name='project_qr'),
     path('documentos/<slug:slug>/', views.document_detail, name='document_detail'),
     path('documentos/<slug:slug>/pdf/', views.document_pdf, name='document_pdf'),
+    path('media/<path:file_path>', views.serve_document_file, name='document_file'),
 ]

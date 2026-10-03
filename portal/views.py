@@ -1,6 +1,7 @@
 from django.shortcuts import get_object_or_404, redirect, render
 from django.conf import settings
 from pathlib import Path
+import mimetypes
 import base64
 from collections import defaultdict
 import html
@@ -26,15 +27,16 @@ try:
 	import qrcode
 except ImportError:
 	qrcode = None
-from django.http import FileResponse, HttpResponse, JsonResponse
+from django.core.files.storage import default_storage
+from django.db.models import Q
+from django.http import FileResponse, Http404, HttpResponse, JsonResponse
 from django.views.decorators.cache import cache_page
 from openpyxl import load_workbook
 from pptx import Presentation
 
-from .models import Document, is_missing_storage_object_error
+from .models import Document
 from .services import build_homepage_summary, get_answer_for_question, get_chat_categories, get_quick_questions, get_question_bank
 from .utils import dashboard_number as _dashboard_number, dashboard_display as _dashboard_display
-from botocore.exceptions import ClientError
 
 
 def home(request):
@@ -218,9 +220,7 @@ def documentation_statistics():
 				if values and values[0]:
 					result[key].append({'label': values[0], 'value': values[1] if len(values) > 1 else '', 'detail': values[2] if len(values) > 2 else ''})
 		return result
-	except ClientError as error:
-		if not is_missing_storage_object_error(error):
-			raise
+	except FileNotFoundError:
 		return {'annual': []}
 	except (OSError, ValueError, IndexError, PackageNotFoundError, BadZipFile, KeyError, TypeError, AttributeError):
 		return {'annual': []}
@@ -230,6 +230,24 @@ def document_detail(request, slug):
 	document = get_object_or_404(Document, slug=slug, is_published=True)
 	preview = build_preview(document)
 	return render(request, 'portal/document_detail.html', {'document': document, 'preview': preview})
+
+
+def serve_document_file(request, file_path):
+	if not Document.objects.filter(is_published=True).filter(
+		Q(file=file_path) | Q(pdf_file=file_path)
+	).exists():
+		raise Http404('No se encontró el documento publicado.')
+	try:
+		file_handle = default_storage.open(file_path, 'rb')
+	except FileNotFoundError as error:
+		raise Http404('El archivo del documento no está disponible.') from error
+	content_type, _ = mimetypes.guess_type(file_path)
+	return FileResponse(
+		file_handle,
+		content_type=content_type or 'application/octet-stream',
+		as_attachment=Path(file_path).suffix.lower() != '.pdf',
+		filename=Path(file_path).name,
+	)
 
 
 CHART_NS = {'c': 'http://schemas.openxmlformats.org/drawingml/2006/chart'}
@@ -321,9 +339,7 @@ def document_pdf(request, slug):
 	try:
 		with document.file.open('rb') as source:
 			word = WordDocument(source)
-	except (FileNotFoundError, ClientError) as error:
-		if not is_missing_storage_object_error(error):
-			raise
+	except FileNotFoundError:
 		return HttpResponse('No se encontró el archivo del documento.', status=404)
 	output = BytesIO()
 	styles = getSampleStyleSheet()
@@ -437,9 +453,7 @@ def build_preview(document):
 							seen.add(text)
 					slides.append({'number': index, 'title': titles[0] if titles else '', 'texts': unique_texts[:4]})
 			preview['content'] = slides
-	except (FileNotFoundError, ClientError) as error:
-		if not is_missing_storage_object_error(error):
-			raise
+	except FileNotFoundError:
 		preview['error'] = 'El archivo no está disponible en el almacenamiento. Vuelve a cargarlo desde el administrador.'
 	except (OSError, ValueError, KeyError, AttributeError):
 		preview['error'] = 'No fue posible leer este archivo. Puedes abrirlo con su aplicación original.'
@@ -656,18 +670,14 @@ def dashboard_preview_data(document=None):
 			return _enrich_dashboard_data({'annual': [], 'monthly': [], 'days': [], 'weapons': [], 'ages': [], 'regions': [], 'gender': [], 'kpis': [{'label': 'Total casos', 'value': '0'}, {'label': 'Año con más casos', 'value': '-'}, {'label': 'Municipios', 'value': '0'}]})
 		try:
 			cache_key = (document.pk, document.file.name, document.file.size)
-		except (OSError, ClientError) as error:
-			if not is_missing_storage_object_error(error):
-				raise
+		except OSError:
 			return _enrich_dashboard_data({'annual': [], 'monthly': [], 'days': [], 'weapons': [], 'ages': [], 'regions': [], 'gender': [], 'kpis': [{'label': 'Total casos', 'value': '0'}, {'label': 'Año con más casos', 'value': '-'}, {'label': 'Municipios', 'value': '0'}]})
 		try:
 			if cache_key not in _dashboard_cache or not _dashboard_cache[cache_key].get('facets'):
 				_dashboard_cache.clear()
 				_dashboard_cache[cache_key] = _extract_excel_dashboard(document)
 			return _enrich_dashboard_data(_dashboard_cache[cache_key])
-		except ClientError as error:
-			if not is_missing_storage_object_error(error):
-				raise
+		except FileNotFoundError:
 			return _enrich_dashboard_data({'annual': [], 'monthly': [], 'days': [], 'weapons': [], 'ages': [], 'regions': [], 'gender': [], 'kpis': [{'label': 'Total casos', 'value': '0'}, {'label': 'Año con más casos', 'value': '-'}, {'label': 'Municipios', 'value': '0'}]})
 		except (OSError, ValueError, IndexError, PackageNotFoundError, BadZipFile, KeyError, TypeError, AttributeError):
 			return _enrich_dashboard_data({'annual': [], 'monthly': [], 'days': [], 'weapons': [], 'ages': [], 'regions': [], 'gender': [], 'kpis': [{'label': 'Total casos', 'value': '0'}, {'label': 'Año con más casos', 'value': '-'}, {'label': 'Municipios', 'value': '0'}]})

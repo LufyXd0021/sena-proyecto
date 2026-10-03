@@ -3,18 +3,8 @@ from django.core.exceptions import ValidationError
 from django.core.files.storage import default_storage
 from django.db import models
 from pathlib import Path
-from botocore.exceptions import ClientError
 
 from .utils import get_document_summary
-
-
-def is_missing_storage_object_error(error):
-	if isinstance(error, FileNotFoundError):
-		return True
-	if not isinstance(error, ClientError):
-		return False
-	error_code = error.response.get('Error', {}).get('Code')
-	return error_code in {'404', 'NoSuchKey', 'NotFound'}
 
 
 def resolve_storage_path(file_field):
@@ -49,9 +39,7 @@ def validate_uploaded_file(file_field, field_name):
 	max_size = getattr(settings, 'MAX_UPLOAD_SIZE', 10 * 1024 * 1024)
 	try:
 		file_size = file_field.size
-	except (FileNotFoundError, ClientError) as error:
-		if not is_missing_storage_object_error(error):
-			raise
+	except FileNotFoundError as error:
 		raise ValidationError({field_name: 'El archivo guardado ya no está disponible. Vuelve a cargarlo antes de guardar este documento.'}) from error
 	if file_size > max_size:
 		max_size_mb = max_size / (1024 * 1024)
@@ -90,9 +78,7 @@ class Document(models.Model):
 			max_size = getattr(settings, 'MAX_UPLOAD_SIZE', 10 * 1024 * 1024)
 			try:
 				pdf_size = self.pdf_file.size
-			except (FileNotFoundError, ClientError) as error:
-				if not is_missing_storage_object_error(error):
-					raise
+			except FileNotFoundError as error:
 				raise ValidationError({'pdf_file': 'El archivo guardado ya no está disponible. Vuelve a cargarlo antes de guardar este documento.'}) from error
 			if pdf_size > max_size:
 				max_size_mb = max_size / (1024 * 1024)
@@ -127,10 +113,8 @@ class Document(models.Model):
 			return 'Tamaño no disponible'
 		try:
 			size = self.file.size
-		except (OSError, ClientError) as error:
-			if is_missing_storage_object_error(error):
-				return 'Archivo no disponible'
-			raise
+		except OSError:
+			return 'Archivo no disponible'
 		if size >= 1024 * 1024:
 			return f'{size / (1024 * 1024):.1f} MB'
 		return f'{max(size / 1024, 1):.0f} KB'

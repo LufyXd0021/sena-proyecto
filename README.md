@@ -205,25 +205,22 @@ Antes del primer despliegue, Render solicitará el secreto `DJANGO_ADMIN_PASSWOR
 
 El límite de carga es de 100 MiB (`DJANGO_MAX_UPLOAD_SIZE=104857600`), suficiente para un archivo de 70 MB. Django procesa archivos grandes con almacenamiento temporal en lugar de mantenerlos enteros en memoria.
 
-Esta configuración usa los planes gratuitos para demostraciones: el servicio puede suspenderse cuando no recibe tráfico y la base de datos gratuita tiene fecha de expiración. El almacenamiento local de `media/` solo sirve para pruebas: los archivos pueden perderse al reiniciar o redesplegar. Antes de cargar documentos que deban conservarse, configura almacenamiento persistente con las instrucciones siguientes; el límite de carga no hace persistentes los documentos.
+Esta configuración usa los planes gratuitos para demostraciones: el servicio puede suspenderse cuando no recibe tráfico y la base de datos gratuita tiene fecha de expiración. Render reconstruye los documentos publicados desde la carpeta `documentos/` versionada en GitHub cada vez que inicia el servicio.
 
 Render termina HTTPS en su proxy y redirige allí las solicitudes HTTP. Por eso el Blueprint desactiva la redirección SSL duplicada de Django, que puede causar un bucle detrás del proxy.
 
-### Conservar documentos con Cloudflare R2
+### Publicar documentos gratis desde GitHub
 
-El sistema de archivos del servicio web de Render es efímero. Para conservar archivos entre despliegues, crea un bucket en Cloudflare R2 y habilita una URL de lectura pública para los documentos que publiques. Para un dominio personalizado de R2, configura HTTPS y usa solo el nombre del host en `AWS_S3_CUSTOM_DOMAIN`; la URL pública `r2.dev` puede usarse para una demostración.
+El proyecto incluye los documentos públicos en `documentos/`. Al arrancar Render, `sync_repository_documents` los copia a su almacenamiento temporal, actualiza sus fichas en PostgreSQL y habilita las descargas públicas. Así, los archivos vuelven a estar disponibles después de un reinicio o redepliegue, sin añadir un proveedor de almacenamiento.
 
-En R2 crea un token de API con permisos de lectura y escritura de objetos para ese bucket. En el servicio web de Render, agrega estas variables en **Environment** antes de cambiar el backend:
+El repositorio es público: los archivos que agregues allí también serán públicos. El Excel de aproximadamente 70 MB está debajo del límite de GitHub de 100 MB por archivo, aunque GitHub muestra una advertencia para archivos mayores de 50 MB.
 
-| Variable | Valor |
-| --- | --- |
-| `AWS_STORAGE_BUCKET_NAME` | Nombre del bucket |
-| `AWS_S3_ENDPOINT_URL` | `https://<ACCOUNT_ID>.r2.cloudflarestorage.com` |
-| `AWS_S3_REGION_NAME` | `auto` |
-| `AWS_ACCESS_KEY_ID` | Access Key ID del token R2 |
-| `AWS_SECRET_ACCESS_KEY` | Secret Access Key del token R2 |
-| `AWS_S3_CUSTOM_DOMAIN` | Host público HTTPS del bucket, sin `https://` |
+Para cambiar un documento, reemplaza su archivo en `documentos/`, actualiza el nombre fuente si corresponde en `portal/management/commands/sync_repository_documents.py`, y publica el cambio:
 
-Guarda las claves como secretos de Render y no las añadas a GitHub. Cuando estén configuradas todas las variables, agrega `DJANGO_MEDIA_STORAGE_BACKEND=s3` y despliega. Revisa los logs de inicio; Django debe completar el arranque sin indicar variables R2 faltantes.
+```powershell
+git add documentos portal/management/commands/sync_repository_documents.py
+git commit -m "Actualizar documentos del proyecto"
+git push origin main
+```
 
-Los archivos que se subieron antes de configurar R2 no se pueden recuperar desde Render si el servicio ya eliminó su disco efímero. Después de conectar R2, reemplaza y vuelve a cargar cada documento desde el administrador. El Excel se lee desde R2 para generar el dashboard y los archivos publicados se enlazan desde el host público del bucket.
+Render desplegará la nueva versión y sincronizará automáticamente los documentos. Las cargas hechas manualmente en el administrador no sobreviven un redepliegue; usa el flujo anterior para publicarlas de forma persistente.
