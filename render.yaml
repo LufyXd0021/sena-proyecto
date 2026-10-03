@@ -10,7 +10,7 @@ services:
     runtime: python
     plan: free
     buildCommand: pip install -r requirements.txt && python manage.py collectstatic --noinput
-    startCommand: python manage.py migrate && python serve.py
+    startCommand: python manage.py migrate && python manage.py create_admin_from_env && python serve.py
     envVars:
       - key: DJANGO_DEBUG
         value: "False"
@@ -22,6 +22,14 @@ services:
         value: "False"
       - key: DJANGO_EMAIL_BACKEND
         value: django.core.mail.backends.smtp.EmailBackend
+      - key: DJANGO_MAX_UPLOAD_SIZE
+        value: "104857600"
+      - key: DJANGO_ADMIN_USERNAME
+        value: davidunisimon94
+      - key: DJANGO_ADMIN_EMAIL
+        value: davidunisimon94@gmail.com
+      - key: DJANGO_ADMIN_PASSWORD
+        sync: false
       - key: POSTGRES_DB
         fromDatabase:
           name: lesiones-db

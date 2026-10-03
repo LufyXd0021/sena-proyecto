@@ -201,6 +201,10 @@ El archivo `render.yaml` permite crear el servicio web y la base PostgreSQL desd
 3. Confirma la creación de los recursos definidos en `render.yaml`. Render generará `DJANGO_SECRET_KEY` y conectará la base de datos.
 4. Cuando el despliegue termine, abre la URL `onrender.com` asignada al servicio.
 
-Esta configuración usa los planes gratuitos para demostraciones: el servicio puede suspenderse cuando no recibe tráfico y la base de datos gratuita tiene fecha de expiración. Los archivos subidos a `media/` no tienen almacenamiento persistente en esta configuración y pueden perderse al reiniciar o redesplegar. No la uses para información real ni para conservar datos importantes; para producción configura recursos persistentes y almacenamiento de archivos adecuado.
+Antes del primer despliegue, Render solicitará el secreto `DJANGO_ADMIN_PASSWORD` porque está marcado para configuración manual. En **Environment**, define una contraseña larga y única. Después del despliegue, el comando de inicio creará el superusuario `davidunisimon94` con ese correo y contraseña. Entra al administrador en `https://tu-servicio.onrender.com/admin/`. Si cambias esa variable más adelante, el siguiente reinicio actualizará la contraseña del administrador.
+
+El límite de carga es de 100 MiB (`DJANGO_MAX_UPLOAD_SIZE=104857600`), suficiente para un archivo de 70 MB. Django procesa archivos grandes con almacenamiento temporal en lugar de mantenerlos enteros en memoria.
+
+Esta configuración usa los planes gratuitos para demostraciones: el servicio puede suspenderse cuando no recibe tráfico y la base de datos gratuita tiene fecha de expiración. Los archivos subidos a `media/` no tienen almacenamiento persistente en esta configuración y pueden perderse al reiniciar o redesplegar. Antes de subir tu archivo de 70 MB para conservarlo, configura almacenamiento persistente (por ejemplo, un disco persistente de pago o almacenamiento de objetos); el límite de carga no hace persistentes los documentos.
 
 Render termina HTTPS en su proxy y redirige allí las solicitudes HTTP. Por eso el Blueprint desactiva la redirección SSL duplicada de Django, que puede causar un bucle detrás del proxy.
