@@ -192,8 +192,43 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # WhiteNoise: compresión brotli/gzip y caché inmutable en estáticos.
 # CompressedManifestStaticFilesStorage agrega hash al nombre del archivo
 # para caché larga (Cache-Control: max-age=31536000, immutable).
+media_storage_backend = os.environ.get('DJANGO_MEDIA_STORAGE_BACKEND', 'filesystem').lower()
+if media_storage_backend == 's3':
+    s3_required_settings = {
+        'AWS_STORAGE_BUCKET_NAME': os.environ.get('AWS_STORAGE_BUCKET_NAME', '').strip(),
+        'AWS_S3_ENDPOINT_URL': os.environ.get('AWS_S3_ENDPOINT_URL', '').strip(),
+        'AWS_ACCESS_KEY_ID': os.environ.get('AWS_ACCESS_KEY_ID', '').strip(),
+        'AWS_SECRET_ACCESS_KEY': os.environ.get('AWS_SECRET_ACCESS_KEY', '').strip(),
+        'AWS_S3_CUSTOM_DOMAIN': os.environ.get('AWS_S3_CUSTOM_DOMAIN', '').strip(),
+    }
+    missing_s3_settings = [name for name, value in s3_required_settings.items() if not value]
+    if missing_s3_settings:
+        raise ImproperlyConfigured(
+            'Faltan variables de almacenamiento S3: ' + ', '.join(missing_s3_settings)
+        )
+    default_storage_config = {
+        'BACKEND': 'storages.backends.s3.S3Storage',
+        'OPTIONS': {
+            'bucket_name': s3_required_settings['AWS_STORAGE_BUCKET_NAME'],
+            'endpoint_url': s3_required_settings['AWS_S3_ENDPOINT_URL'],
+            'access_key': s3_required_settings['AWS_ACCESS_KEY_ID'],
+            'secret_key': s3_required_settings['AWS_SECRET_ACCESS_KEY'],
+            'region_name': os.environ.get('AWS_S3_REGION_NAME', 'auto'),
+            'custom_domain': s3_required_settings['AWS_S3_CUSTOM_DOMAIN'],
+            'querystring_auth': False,
+            'file_overwrite': False,
+            'signature_version': 's3v4',
+            'addressing_style': 'path',
+            'url_protocol': 'https:',
+        },
+    }
+elif media_storage_backend == 'filesystem':
+    default_storage_config = {'BACKEND': 'django.core.files.storage.FileSystemStorage'}
+else:
+    raise ImproperlyConfigured('DJANGO_MEDIA_STORAGE_BACKEND debe ser filesystem o s3.')
+
 STORAGES = {
-    'default': {'BACKEND': 'django.core.files.storage.FileSystemStorage'},
+    'default': default_storage_config,
     'staticfiles': {
         'BACKEND': 'whitenoise.storage.CompressedManifestStaticFilesStorage',
     },

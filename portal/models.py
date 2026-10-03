@@ -3,8 +3,18 @@ from django.core.exceptions import ValidationError
 from django.core.files.storage import default_storage
 from django.db import models
 from pathlib import Path
+from botocore.exceptions import ClientError
 
 from .utils import get_document_summary
+
+
+def is_missing_storage_object_error(error):
+	if isinstance(error, FileNotFoundError):
+		return True
+	if not isinstance(error, ClientError):
+		return False
+	error_code = error.response.get('Error', {}).get('Code')
+	return error_code in {'404', 'NoSuchKey', 'NotFound'}
 
 
 def resolve_storage_path(file_field):
@@ -37,7 +47,13 @@ def validate_uploaded_file(file_field, field_name):
 	if not any(name.endswith(ext) for ext in allowed_extensions):
 		raise ValidationError({field_name: 'El archivo debe ser un Word (.docx), Excel (.xlsx), PowerPoint (.pptx) o PDF.'})
 	max_size = getattr(settings, 'MAX_UPLOAD_SIZE', 10 * 1024 * 1024)
-	if getattr(file_field, 'size', 0) > max_size:
+	try:
+		file_size = file_field.size
+	except (FileNotFoundError, ClientError) as error:
+		if not is_missing_storage_object_error(error):
+			raise
+		raise ValidationError({field_name: 'El archivo guardado ya no está disponible. Vuelve a cargarlo antes de guardar este documento.'}) from error
+	if file_size > max_size:
 		max_size_mb = max_size / (1024 * 1024)
 		raise ValidationError({field_name: f'El archivo supera el tamaño máximo permitido ({max_size_mb:.0f} MB).'})
 
@@ -72,9 +88,15 @@ class Document(models.Model):
 			if not name.endswith('.pdf'):
 				raise ValidationError({'pdf_file': 'La versión PDF debe ser un archivo .pdf.'})
 			max_size = getattr(settings, 'MAX_UPLOAD_SIZE', 10 * 1024 * 1024)
-			if getattr(self.pdf_file, 'size', 0) > max_size:
+			try:
+				pdf_size = self.pdf_file.size
+			except (FileNotFoundError, ClientError) as error:
+				if not is_missing_storage_object_error(error):
+					raise
+				raise ValidationError({'pdf_file': 'El archivo guardado ya no está disponible. Vuelve a cargarlo antes de guardar este documento.'}) from error
+			if pdf_size > max_size:
 				max_size_mb = max_size / (1024 * 1024)
-				raise ValidationError({'pdf_file': f'La versión PDF supera el tamaño máximo permitido ({max_size_mb:.0f} MB).'} )
+				raise ValidationError({'pdf_file': f'La versión PDF supera el tamaño máximo permitido ({max_size_mb:.0f} MB).' } )
 
 	def save(self, *args, **kwargs):
 		self.full_clean()
@@ -101,10 +123,14 @@ class Document(models.Model):
 
 	@property
 	def file_size_label(self):
-		file_path = self.file_path
-		if not file_path or not file_path.exists():
+		if not self.file:
 			return 'Tamaño no disponible'
-		size = file_path.stat().st_size
+		try:
+			size = self.file.size
+		except (OSError, ClientError) as error:
+			if is_missing_storage_object_error(error):
+				return 'Archivo no disponible'
+			raise
 		if size >= 1024 * 1024:
 			return f'{size / (1024 * 1024):.1f} MB'
 		return f'{max(size / 1024, 1):.0f} KB'
@@ -116,6 +142,6 @@ class Document(models.Model):
 		if not self.file:
 			return ''
 		pdf_name = f'documents/pdf/{Path(self.file.name).stem}.pdf'
-		if resolve_storage_path(self.file) and resolve_storage_path(self.file).suffix.lower() == '.pdf':
+		if Path(self.file.name).suffix.lower() == '.pdf':
 			return self.file.url
 		return default_storage.url(pdf_name) if default_storage.exists(pdf_name) else ''

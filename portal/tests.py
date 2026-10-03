@@ -7,10 +7,11 @@ from django.core.cache import cache
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase, override_settings
 from django.urls import reverse
+from botocore.exceptions import ClientError
 from docx import Document as WordDocument
 from openpyxl import Workbook
 
-from .models import Document
+from .models import Document, is_missing_storage_object_error
 from .views import dashboard_preview_data
 
 
@@ -321,6 +322,13 @@ class DocumentViewsTests(TestCase):
 
 
 class DocumentValidationTests(TestCase):
+	def test_missing_r2_object_is_distinguished_from_storage_errors(self):
+		missing_object = ClientError({'Error': {'Code': 'NoSuchKey'}}, 'HeadObject')
+		access_denied = ClientError({'Error': {'Code': '403'}}, 'HeadObject')
+
+		self.assertTrue(is_missing_storage_object_error(missing_object))
+		self.assertFalse(is_missing_storage_object_error(access_denied))
+
 	def test_rejects_invalid_file_extension(self):
 		with self.assertRaises(Exception):
 			Document.objects.create(

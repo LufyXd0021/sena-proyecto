@@ -31,9 +31,10 @@ from django.views.decorators.cache import cache_page
 from openpyxl import load_workbook
 from pptx import Presentation
 
-from .models import Document, resolve_storage_path
+from .models import Document, is_missing_storage_object_error
 from .services import build_homepage_summary, get_answer_for_question, get_chat_categories, get_quick_questions, get_question_bank
 from .utils import dashboard_number as _dashboard_number, dashboard_display as _dashboard_display
+from botocore.exceptions import ClientError
 
 
 def home(request):
@@ -201,15 +202,13 @@ def project_qr(request):
 
 def documentation_statistics():
 	word_document = Document.objects.filter(document_type='word', is_published=True).first()
-	if not word_document:
+	if not word_document or not word_document.file:
 		return {'annual': []}
-	file_path = resolve_storage_path(word_document.file)
-	if not file_path or not file_path.exists():
-		return {'annual': []}
-	if file_path.suffix.lower() == '.pdf':
+	if Path(word_document.file.name).suffix.lower() == '.pdf':
 		return {'annual': [], 'monthly': [], 'regions': []}
 	try:
-		word = WordDocument(str(file_path))
+		with word_document.file.open('rb') as source:
+			word = WordDocument(source)
 		result = {'annual': [], 'monthly': [], 'regions': []}
 		for index, key in ((0, 'annual'), (1, 'monthly'), (5, 'regions')):
 			if len(word.tables) <= index:
@@ -219,6 +218,10 @@ def documentation_statistics():
 				if values and values[0]:
 					result[key].append({'label': values[0], 'value': values[1] if len(values) > 1 else '', 'detail': values[2] if len(values) > 2 else ''})
 		return result
+	except ClientError as error:
+		if not is_missing_storage_object_error(error):
+			raise
+		return {'annual': []}
 	except (OSError, ValueError, IndexError, PackageNotFoundError, BadZipFile, KeyError, TypeError, AttributeError):
 		return {'annual': []}
 
@@ -299,15 +302,29 @@ def render_docx_chart(chart_blob):
 def document_pdf(request, slug):
 	document = get_object_or_404(Document, slug=slug, is_published=True, document_type='word')
 	download = request.GET.get('download') == '1'
-	pdf_path = resolve_storage_path(document.pdf_file)
-	if pdf_path and pdf_path.exists():
-		return FileResponse(pdf_path.open('rb'), content_type='application/pdf', as_attachment=download, filename=f'{Path(pdf_path.name).stem}.pdf')
-	file_path = resolve_storage_path(document.file)
-	if file_path and file_path.exists() and file_path.suffix.lower() == '.pdf':
-		return FileResponse(file_path.open('rb'), content_type='application/pdf', as_attachment=download, filename=f'{Path(file_path.name).stem}.pdf')
-	if not file_path or not file_path.exists():
+	if document.pdf_file:
+		return FileResponse(
+			document.pdf_file.open('rb'),
+			content_type='application/pdf',
+			as_attachment=download,
+			filename=f'{Path(document.pdf_file.name).stem}.pdf',
+		)
+	if not document.file:
 		return HttpResponse('No se encontró el archivo del documento.', status=404)
-	word = WordDocument(str(file_path))
+	if Path(document.file.name).suffix.lower() == '.pdf':
+		return FileResponse(
+			document.file.open('rb'),
+			content_type='application/pdf',
+			as_attachment=download,
+			filename=f'{Path(document.file.name).stem}.pdf',
+		)
+	try:
+		with document.file.open('rb') as source:
+			word = WordDocument(source)
+	except (FileNotFoundError, ClientError) as error:
+		if not is_missing_storage_object_error(error):
+			raise
+		return HttpResponse('No se encontró el archivo del documento.', status=404)
 	output = BytesIO()
 	styles = getSampleStyleSheet()
 	body_style = ParagraphStyle('DocumentBody', parent=styles['BodyText'], fontSize=9.5, leading=14, spaceAfter=7)
@@ -353,23 +370,23 @@ def document_pdf(request, slug):
 	SimpleDocTemplate(output, pagesize=A4, rightMargin=16 * mm, leftMargin=16 * mm, topMargin=15 * mm, bottomMargin=15 * mm).build(story)
 	response = HttpResponse(output.getvalue(), content_type='application/pdf')
 	disposition = 'attachment' if download else 'inline'
-	response['Content-Disposition'] = f'{disposition}; filename="{Path(file_path.name).stem}.pdf"'
+	response['Content-Disposition'] = f'{disposition}; filename="{Path(document.file.name).stem}.pdf"'
 	return response
 
 
 def build_preview(document):
 	"""Extract Office content so the document can be read without downloading it."""
-	file_path = resolve_storage_path(document.file)
 	extension = Path(document.file.name).suffix.lower() if document.file else '.pdf'
 	preview = {'kind': extension.lstrip('.'), 'content': None, 'error': None}
-	if not file_path or not file_path.exists():
+	if not document.file:
 		preview['error'] = 'El archivo no está disponible en la carpeta de documentos.'
 		return preview
 	try:
 		if extension == '.pdf':
 			preview['content'] = {'title': document.title, 'message': 'Este documento está disponible en PDF. Puede abrirse desde la vista de detalle.'}
 		elif extension == '.docx':
-			word = WordDocument(str(file_path))
+			with document.file.open('rb') as source:
+				word = WordDocument(source)
 			images = []
 			for relationship in word.part.rels.values():
 				if 'image' in relationship.reltype:
@@ -382,16 +399,21 @@ def build_preview(document):
 				'images': images,
 			}
 		elif extension == '.xlsx':
-			workbook = load_workbook(str(file_path), data_only=True, read_only=True)
-			dashboard = next((sheet for sheet in workbook.worksheets if sheet.title.strip().upper() == 'DASHBOARD'), None)
-			if dashboard:
-				preview['content'] = [{'name': dashboard.title, 'rows': [list(row) for row in dashboard.iter_rows(max_row=60, max_col=20, values_only=True)]}]
-				preview['dashboard'] = dashboard_preview_data(document)
-				preview['dashboard_only'] = True
-			else:
-				preview['content'] = []
+			with document.file.open('rb') as source:
+				workbook = load_workbook(source, data_only=True, read_only=True)
+				try:
+					dashboard = next((sheet for sheet in workbook.worksheets if sheet.title.strip().upper() == 'DASHBOARD'), None)
+					if dashboard:
+						preview['content'] = [{'name': dashboard.title, 'rows': [list(row) for row in dashboard.iter_rows(max_row=60, max_col=20, values_only=True)]}]
+						preview['dashboard'] = dashboard_preview_data(document)
+						preview['dashboard_only'] = True
+					else:
+						preview['content'] = []
+				finally:
+					workbook.close()
 		elif extension == '.pptx':
-			presentation = Presentation(str(file_path))
+			with document.file.open('rb') as source:
+				presentation = Presentation(source)
 			slides = []
 			for index, slide in enumerate(presentation.slides, 1):
 				titles = []
@@ -415,6 +437,10 @@ def build_preview(document):
 							seen.add(text)
 					slides.append({'number': index, 'title': titles[0] if titles else '', 'texts': unique_texts[:4]})
 			preview['content'] = slides
+	except (FileNotFoundError, ClientError) as error:
+		if not is_missing_storage_object_error(error):
+			raise
+		preview['error'] = 'El archivo no está disponible en el almacenamiento. Vuelve a cargarlo desde el administrador.'
 	except (OSError, ValueError, KeyError, AttributeError):
 		preview['error'] = 'No fue posible leer este archivo. Puedes abrirlo con su aplicación original.'
 
@@ -422,8 +448,8 @@ def build_preview(document):
 
 
 def _extract_excel_dashboard(document):
-	excel_path = Path(document.file.path)
-	workbook = load_workbook(excel_path, data_only=True, read_only=True)
+	excel_source = document.file.open('rb')
+	workbook = load_workbook(excel_source, data_only=True, read_only=True)
 	keyed = {
 		'CONSULTA 1': 'annual',
 		'CONSULTA 2': 'monthly',
@@ -593,6 +619,8 @@ def _extract_excel_dashboard(document):
 			{'label': 'Municipios', 'value': '1.020'},
 			{'label': 'Hechos analizados', 'value': '332.390'},
 		]
+	workbook.close()
+	excel_source.close()
 	return _enrich_dashboard_data(data)
 
 
@@ -624,34 +652,31 @@ def dashboard_preview_data(document=None):
 	if not document:
 		return _enrich_dashboard_data({'annual': [], 'monthly': [], 'days': [], 'weapons': [], 'ages': [], 'regions': [], 'gender': [], 'kpis': [{'label': 'Total casos', 'value': '0'}, {'label': 'Año con más casos', 'value': '-'}, {'label': 'Municipios', 'value': '0'}]})
 	if document.document_type in {'excel', 'xlsx'}:
-		file_path = resolve_storage_path(document.file)
-		if not file_path or not file_path.exists():
+		if not document.file:
 			return _enrich_dashboard_data({'annual': [], 'monthly': [], 'days': [], 'weapons': [], 'ages': [], 'regions': [], 'gender': [], 'kpis': [{'label': 'Total casos', 'value': '0'}, {'label': 'Año con más casos', 'value': '-'}, {'label': 'Municipios', 'value': '0'}]})
 		try:
-			cache_key = (str(file_path), file_path.stat().st_mtime_ns)
+			cache_key = (document.pk, document.file.name, document.file.size)
+		except (OSError, ClientError) as error:
+			if not is_missing_storage_object_error(error):
+				raise
+			return _enrich_dashboard_data({'annual': [], 'monthly': [], 'days': [], 'weapons': [], 'ages': [], 'regions': [], 'gender': [], 'kpis': [{'label': 'Total casos', 'value': '0'}, {'label': 'Año con más casos', 'value': '-'}, {'label': 'Municipios', 'value': '0'}]})
+		try:
 			if cache_key not in _dashboard_cache or not _dashboard_cache[cache_key].get('facets'):
-				cache_file = file_path.with_suffix('.dashboard.json')
-				if cache_file.exists():
-					cached = json.loads(cache_file.read_text(encoding='utf-8'))
-					if cached.get('_source_mtime') == cache_key[1]:
-						_dashboard_cache[cache_key] = _enrich_dashboard_data(cached['data'])
-				if cache_key not in _dashboard_cache:
-						if document is not None:
-							_dashboard_cache.clear()
-							_dashboard_cache[cache_key] = _extract_excel_dashboard(document)
-							cache_file.write_text(json.dumps({'_source_mtime': cache_key[1], 'data': _dashboard_cache[cache_key]}, ensure_ascii=False), encoding='utf-8')
-						else:
-					# La preparación pesada se ejecuta fuera del tráfico web.
-							return _enrich_dashboard_data({'annual': [], 'monthly': [], 'days': [], 'weapons': [], 'ages': [], 'regions': [], 'gender': [], 'facets': [], 'kpis': [{'label': 'Total casos', 'value': '0'}, {'label': 'Año con más casos', 'value': '-'}, {'label': 'Municipios', 'value': '0'}]})
+				_dashboard_cache.clear()
+				_dashboard_cache[cache_key] = _extract_excel_dashboard(document)
 			return _enrich_dashboard_data(_dashboard_cache[cache_key])
+		except ClientError as error:
+			if not is_missing_storage_object_error(error):
+				raise
+			return _enrich_dashboard_data({'annual': [], 'monthly': [], 'days': [], 'weapons': [], 'ages': [], 'regions': [], 'gender': [], 'kpis': [{'label': 'Total casos', 'value': '0'}, {'label': 'Año con más casos', 'value': '-'}, {'label': 'Municipios', 'value': '0'}]})
 		except (OSError, ValueError, IndexError, PackageNotFoundError, BadZipFile, KeyError, TypeError, AttributeError):
 			return _enrich_dashboard_data({'annual': [], 'monthly': [], 'days': [], 'weapons': [], 'ages': [], 'regions': [], 'gender': [], 'kpis': [{'label': 'Total casos', 'value': '0'}, {'label': 'Año con más casos', 'value': '-'}, {'label': 'Municipios', 'value': '0'}]})
 	data = {'annual': [], 'monthly': [], 'days': [], 'weapons': [], 'ages': [], 'regions': [], 'gender': [], 'kpis': [{'label': 'Total casos', 'value': '495.272'}, {'label': 'Año con más casos', 'value': '2022'}, {'label': 'Municipios', 'value': '1.020'}, {'label': 'Hechos analizados', 'value': '332.390'}]}
-	file_path = resolve_storage_path(document.file)
-	if not file_path or not file_path.exists() or file_path.suffix.lower() == '.pdf':
+	if not document.file or Path(document.file.name).suffix.lower() == '.pdf':
 		return _enrich_dashboard_data(data)
 	try:
-		word = WordDocument(str(file_path))
+		with document.file.open('rb') as source:
+			word = WordDocument(source)
 		for index, key in ((0, 'annual'), (1, 'monthly'), (2, 'weapons'), (3, 'ages'), (4, 'days'), (5, 'regions')):
 			if len(word.tables) <= index:
 				continue
@@ -749,4 +774,3 @@ def map_api(request):
 			'ages':    sorted(all_ages),
 		},
 	})
-

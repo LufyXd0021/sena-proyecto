@@ -205,6 +205,25 @@ Antes del primer despliegue, Render solicitará el secreto `DJANGO_ADMIN_PASSWOR
 
 El límite de carga es de 100 MiB (`DJANGO_MAX_UPLOAD_SIZE=104857600`), suficiente para un archivo de 70 MB. Django procesa archivos grandes con almacenamiento temporal en lugar de mantenerlos enteros en memoria.
 
-Esta configuración usa los planes gratuitos para demostraciones: el servicio puede suspenderse cuando no recibe tráfico y la base de datos gratuita tiene fecha de expiración. Los archivos subidos a `media/` no tienen almacenamiento persistente en esta configuración y pueden perderse al reiniciar o redesplegar. Antes de subir tu archivo de 70 MB para conservarlo, configura almacenamiento persistente (por ejemplo, un disco persistente de pago o almacenamiento de objetos); el límite de carga no hace persistentes los documentos.
+Esta configuración usa los planes gratuitos para demostraciones: el servicio puede suspenderse cuando no recibe tráfico y la base de datos gratuita tiene fecha de expiración. El almacenamiento local de `media/` solo sirve para pruebas: los archivos pueden perderse al reiniciar o redesplegar. Antes de cargar documentos que deban conservarse, configura almacenamiento persistente con las instrucciones siguientes; el límite de carga no hace persistentes los documentos.
 
 Render termina HTTPS en su proxy y redirige allí las solicitudes HTTP. Por eso el Blueprint desactiva la redirección SSL duplicada de Django, que puede causar un bucle detrás del proxy.
+
+### Conservar documentos con Cloudflare R2
+
+El sistema de archivos del servicio web de Render es efímero. Para conservar archivos entre despliegues, crea un bucket en Cloudflare R2 y habilita una URL de lectura pública para los documentos que publiques. Para un dominio personalizado de R2, configura HTTPS y usa solo el nombre del host en `AWS_S3_CUSTOM_DOMAIN`; la URL pública `r2.dev` puede usarse para una demostración.
+
+En R2 crea un token de API con permisos de lectura y escritura de objetos para ese bucket. En el servicio web de Render, agrega estas variables en **Environment** antes de cambiar el backend:
+
+| Variable | Valor |
+| --- | --- |
+| `AWS_STORAGE_BUCKET_NAME` | Nombre del bucket |
+| `AWS_S3_ENDPOINT_URL` | `https://<ACCOUNT_ID>.r2.cloudflarestorage.com` |
+| `AWS_S3_REGION_NAME` | `auto` |
+| `AWS_ACCESS_KEY_ID` | Access Key ID del token R2 |
+| `AWS_SECRET_ACCESS_KEY` | Secret Access Key del token R2 |
+| `AWS_S3_CUSTOM_DOMAIN` | Host público HTTPS del bucket, sin `https://` |
+
+Guarda las claves como secretos de Render y no las añadas a GitHub. Cuando estén configuradas todas las variables, agrega `DJANGO_MEDIA_STORAGE_BACKEND=s3` y despliega. Revisa los logs de inicio; Django debe completar el arranque sin indicar variables R2 faltantes.
+
+Los archivos que se subieron antes de configurar R2 no se pueden recuperar desde Render si el servicio ya eliminó su disco efímero. Después de conectar R2, reemplaza y vuelve a cargar cada documento desde el administrador. El Excel se lee desde R2 para generar el dashboard y los archivos publicados se enlazan desde el host público del bucket.
