@@ -36,7 +36,6 @@ from .services import build_homepage_summary, get_answer_for_question, get_chat_
 from .utils import dashboard_number as _dashboard_number, dashboard_display as _dashboard_display
 
 
-@cache_page(60 * 15)  # 15 minutos — los datos del Excel no cambian con frecuencia
 def home(request):
 	documents = Document.objects.filter(is_published=True)
 	statistics = dashboard_preview_data()
@@ -101,7 +100,6 @@ def generated_report_pdf(request):
 	return response
 
 
-@cache_page(60 * 15)
 def findings_page(request):
 	statistics = dashboard_preview_data()
 	documents = Document.objects.filter(is_published=True)
@@ -751,5 +749,4 @@ def map_api(request):
 			'ages':    sorted(all_ages),
 		},
 	})
-
 

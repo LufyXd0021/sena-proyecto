@@ -46,6 +46,21 @@ class DocumentViewsTests(TestCase):
 		self.assertEqual(response.status_code, 200)
 		self.assertNotContains(response, 'id="colombia-map-container"')
 
+	def test_home_shows_documents_published_after_initial_visit(self):
+		self.client.get(reverse('portal:home'))
+		Document.objects.create(
+			title='Recurso recién publicado',
+			slug='recurso-recien-publicado',
+			document_type='excel',
+			summary='Resumen del recurso',
+			file=SimpleUploadedFile('recurso.xlsx', b'contenido'),
+			is_published=True,
+		)
+
+		response = self.client.get(reverse('portal:home'))
+
+		self.assertContains(response, 'Recurso recién publicado')
+
 	def test_map_page_loads(self):
 		response = self.client.get(reverse('portal:map'))
 		self.assertRedirects(response, reverse('portal:territory'))
@@ -72,6 +87,21 @@ class DocumentViewsTests(TestCase):
 		response = self.client.get(reverse('portal:findings'))
 		self.assertContains(response, 'Descargar')
 		self.assertContains(response, 'Ver documento')
+
+	def test_findings_shows_documents_published_after_initial_visit(self):
+		self.client.get(reverse('portal:findings'))
+		Document.objects.create(
+			title='Hallazgo recién publicado',
+			slug='hallazgo-recien-publicado',
+			document_type='excel',
+			summary='Resumen del recurso',
+			file=SimpleUploadedFile('hallazgo.xlsx', b'contenido'),
+			is_published=True,
+		)
+
+		response = self.client.get(reverse('portal:findings'))
+
+		self.assertContains(response, 'Hallazgo recién publicado')
 
 	def test_methodology_page_uses_glossary_content(self):
 		response = self.client.get(reverse('portal:methodology'))
