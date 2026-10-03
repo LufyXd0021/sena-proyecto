@@ -202,3 +202,5 @@ El archivo `render.yaml` permite crear el servicio web y la base PostgreSQL desd
 4. Cuando el despliegue termine, abre la URL `onrender.com` asignada al servicio.
 
 Esta configuración usa los planes gratuitos para demostraciones: el servicio puede suspenderse cuando no recibe tráfico y la base de datos gratuita tiene fecha de expiración. Los archivos subidos a `media/` no tienen almacenamiento persistente en esta configuración y pueden perderse al reiniciar o redesplegar. No la uses para información real ni para conservar datos importantes; para producción configura recursos persistentes y almacenamiento de archivos adecuado.
+
+Render termina HTTPS en su proxy y redirige allí las solicitudes HTTP. Por eso el Blueprint desactiva la redirección SSL duplicada de Django, que puede causar un bucle detrás del proxy.

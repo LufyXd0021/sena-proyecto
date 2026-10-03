@@ -18,6 +18,8 @@ services:
         generateValue: true
       - key: DJANGO_DB_ENGINE
         value: postgresql
+      - key: DJANGO_SECURE_SSL_REDIRECT
+        value: "False"
       - key: DJANGO_EMAIL_BACKEND
         value: django.core.mail.backends.smtp.EmailBackend
       - key: POSTGRES_DB
