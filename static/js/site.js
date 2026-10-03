@@ -105,6 +105,10 @@ const initializeChat = () => {
     const panel = widget.querySelector('.chat-panel');
     const closeButton = widget.querySelector('.chat-close');
     const form = widget.querySelector('[data-chat-form]');
+    const freeForm = widget.querySelector('[data-chat-free-form]');
+    const freeQuestion = widget.querySelector('[data-chat-free-question]');
+    const dictateButton = widget.querySelector('[data-chat-dictate]');
+    const freeSubmitButton = freeForm.querySelector('[type="submit"]');
     const categorySelect = form.querySelector('[data-chat-category]');
     const questionSelect = form.querySelector('[data-chat-question]');
     const messages = widget.querySelector('[data-chat-messages]');
@@ -117,6 +121,7 @@ const initializeChat = () => {
     const voiceToggle = widget.querySelector('[data-chat-voice-toggle]');
     const voiceStatus = widget.querySelector('[data-chat-voice-status]');
     const speechSupported = 'speechSynthesis' in window && 'SpeechSynthesisUtterance' in window;
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     let readAnswersAloud = false;
     let activeSpeechButton = null;
     let activeUtterance = null;
@@ -164,6 +169,10 @@ const initializeChat = () => {
         voiceToggle.disabled = true;
         voiceToggle.title = 'La lectura en voz alta no está disponible en este navegador';
     }
+    if (!SpeechRecognition) {
+        dictateButton.disabled = true;
+        dictateButton.title = 'El dictado por voz no está disponible en este navegador';
+    }
     voiceToggle.addEventListener('click', () => {
         readAnswersAloud = !readAnswersAloud;
         voiceToggle.setAttribute('aria-pressed', String(readAnswersAloud));
@@ -182,8 +191,7 @@ const initializeChat = () => {
         launcher.setAttribute('aria-expanded', String(isOpen));
         launcher.title = isOpen ? 'Ocultar asistente del proyecto' : 'Mostrar asistente del proyecto';
         if (isOpen) {
-            const firstChoice = quickSuggestions.querySelector('button') || categoryList.querySelector('button');
-            firstChoice?.focus();
+            freeQuestion.focus();
         }
     };
     const escapeHtml = (text) => text.replace(/[&<>"']/g, (character) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' }[character]));
@@ -194,12 +202,12 @@ const initializeChat = () => {
     const addMessage = (text, role, sources = []) => {
         const message = document.createElement('div');
         message.className = `chat-message ${role.split(' ').map((item) => `chat-message-${item}`).join(' ')}`;
-        if (role === 'assistant') {
+        if (role.split(' ').includes('assistant')) {
             message.innerHTML = formatAssistantText(text);
         } else {
             message.textContent = text;
         }
-        if (role === 'assistant' && !message.classList.contains('chat-message-pending')) {
+        if (role.split(' ').includes('assistant') && !message.classList.contains('chat-message-pending')) {
             const speakButton = document.createElement('button');
             speakButton.type = 'button';
             speakButton.className = 'chat-message-speak';
@@ -218,7 +226,23 @@ const initializeChat = () => {
         if (sources.length) {
             const sourceNote = document.createElement('small');
             sourceNote.className = 'chat-sources';
-            sourceNote.textContent = `Fuentes: ${sources.join(' · ')}`;
+            sourceNote.append('Fuentes: ');
+            sources.forEach((source, index) => {
+                if (index) sourceNote.append(' · ');
+                if (typeof source === 'string') {
+                    sourceNote.append(source);
+                    return;
+                }
+                const label = [source.title, source.reference].filter(Boolean).join(' — ');
+                if (source.url) {
+                    const link = document.createElement('a');
+                    link.href = source.url;
+                    link.textContent = label;
+                    sourceNote.append(link);
+                } else {
+                    sourceNote.append(label);
+                }
+            });
             message.appendChild(sourceNote);
         }
         messages.appendChild(message);
@@ -236,7 +260,7 @@ const initializeChat = () => {
     };
     const resetChatSession = () => {
         messages.replaceChildren();
-        addMessage('Selecciona un tema y después una pregunta. Las respuestas están construidas con la documentación publicada y los datos del dashboard.', 'assistant');
+        addMessage('Escribe o dicta una pregunta sobre el proyecto. También puedes elegir uno de los temas sugeridos. Las respuestas se buscan en documentos publicados y datos del dashboard.', 'assistant');
         progress.textContent = 'Paso 1 de 2 · Elige un tema';
         categorySelect.value = '';
         questionSelect.value = '';
@@ -365,6 +389,68 @@ const initializeChat = () => {
         categoryList.querySelector('button')?.focus();
     });
     resetChatSession();
+    freeForm.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const query = freeQuestion.value.trim();
+        if (!query) return;
+        addMessage(query, 'user');
+        freeQuestion.value = '';
+        freeQuestion.disabled = true;
+        freeSubmitButton.disabled = true;
+        dictateButton.disabled = true;
+        const pending = addMessage('Buscando en los documentos del proyecto…', 'assistant pending');
+        try {
+            const response = await fetch('/api/chat/', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
+                body: JSON.stringify({ query }),
+            });
+            const result = await response.json();
+            pending.remove();
+            if (!response.ok) throw new Error(result.error || 'No pude procesar la pregunta.');
+            addMessage(result.answer || 'No recibí una respuesta válida.', 'assistant', result.sources || []);
+            progress.textContent = 'Pregunta abierta · Puedes continuar';
+        } catch (error) {
+            pending.remove();
+            addMessage(error.message || 'No pude conectar con el asistente. Inténtalo de nuevo.', 'error');
+        } finally {
+            freeQuestion.disabled = false;
+            freeSubmitButton.disabled = false;
+            dictateButton.disabled = !SpeechRecognition;
+            freeQuestion.focus();
+        }
+    });
+    if (SpeechRecognition) {
+        const recognition = new SpeechRecognition();
+        recognition.lang = 'es-CO';
+        recognition.interimResults = false;
+        recognition.maxAlternatives = 1;
+        recognition.onstart = () => {
+            dictateButton.classList.add('is-listening');
+            dictateButton.setAttribute('aria-pressed', 'true');
+            voiceStatus.textContent = 'El dictado se procesa según la configuración de voz de tu navegador. Te escucho.';
+        };
+        recognition.onresult = (event) => {
+            freeQuestion.value = event.results[0][0].transcript.trim();
+            freeForm.requestSubmit();
+        };
+        recognition.onerror = (event) => {
+            voiceStatus.textContent = event.error === 'not-allowed'
+                ? 'Permite el acceso al micrófono en el navegador para usar el dictado.'
+                : 'No se pudo reconocer la voz. Puedes escribir la pregunta.';
+        };
+        recognition.onend = () => {
+            dictateButton.classList.remove('is-listening');
+            dictateButton.setAttribute('aria-pressed', 'false');
+        };
+        dictateButton.addEventListener('click', () => {
+            try {
+                recognition.start();
+            } catch (error) {
+                voiceStatus.textContent = 'El micrófono ya está activo. Termina de hablar o intenta nuevamente.';
+            }
+        });
+    }
     form.addEventListener('submit', async (event) => {
         event.preventDefault();
         if (!categorySelect.value || !questionSelect.value) return;

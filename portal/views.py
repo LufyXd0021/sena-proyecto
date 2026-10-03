@@ -30,12 +30,13 @@ except ImportError:
 from django.core.files.storage import default_storage
 from django.db.models import Q
 from django.http import FileResponse, Http404, HttpResponse, JsonResponse
+from django.urls import reverse
 from django.views.decorators.cache import cache_page
 from openpyxl import load_workbook
 from pptx import Presentation
 
 from .models import Document
-from .services import build_homepage_summary, get_answer_for_question, get_chat_categories, get_quick_questions, get_question_bank
+from .services import build_homepage_summary, get_answer_for_question, get_chat_categories, get_quick_questions, get_question_bank, search_chat_knowledge
 from .utils import dashboard_number as _dashboard_number, dashboard_display as _dashboard_display
 
 
@@ -165,6 +166,30 @@ def chat(request):
 		payload = json.loads(request.body or '{}')
 	except json.JSONDecodeError:
 		return JsonResponse({'error': 'La solicitud no tiene un formato válido.'}, status=400)
+	raw_question = payload.get('query', '')
+	if not isinstance(raw_question, str):
+		return JsonResponse({'error': 'La pregunta debe ser texto.'}, status=400)
+	free_question = raw_question.strip()
+	if free_question:
+		if len(free_question) > 500:
+			return JsonResponse({'error': 'La pregunta no puede superar los 500 caracteres.'}, status=400)
+		documents = list(Document.objects.filter(is_published=True).only('id', 'title', 'summary', 'document_type', 'file', 'slug'))
+		statistics = dashboard_preview_data()
+		results = search_chat_knowledge(free_question, documents, statistics, bank)
+		if not results:
+			return JsonResponse({
+				'answer': 'No encontré información suficiente sobre esa pregunta en los documentos publicados ni en los indicadores del dashboard. Prueba con otros términos o elige uno de los temas sugeridos.',
+				'sources': [],
+			})
+		answer = 'Encontré esta información relacionada:\n' + '\n'.join(
+			f"- {result['text']}" for result in results
+		)
+		citations = [{
+			'title': result['title'],
+			'reference': result['reference'],
+			'url': reverse('portal:document_detail', kwargs={'slug': result['slug']}) if result['slug'] else '',
+		} for result in results]
+		return JsonResponse({'answer': answer, 'sources': citations})
 	category = bank.get(str(payload.get('category', '')))
 	question_id = str(payload.get('question', ''))
 	question = next((item for item in category['questions'] if item['id'] == question_id), None) if category else None

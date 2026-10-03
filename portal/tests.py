@@ -13,6 +13,8 @@ from django.test import TestCase, override_settings
 from django.urls import reverse
 from docx import Document as WordDocument
 from openpyxl import Workbook
+from pptx import Presentation
+from reportlab.pdfgen import canvas
 
 from .models import Document
 from .views import dashboard_preview_data
@@ -49,6 +51,8 @@ class DocumentViewsTests(TestCase):
 		response = self.client.get(reverse('portal:home'))
 		self.assertEqual(response.status_code, 200)
 		self.assertNotContains(response, 'id="colombia-map-container"')
+		self.assertContains(response, 'data-chat-free-form')
+		self.assertContains(response, 'data-chat-dictate')
 
 	def test_home_shows_documents_published_after_initial_visit(self):
 		self.client.get(reverse('portal:home'))
@@ -273,6 +277,114 @@ class DocumentViewsTests(TestCase):
 		response = self.client.post(reverse('portal:chat'), data={'category': 'dashboard', 'question': 'dashboard-overview'}, content_type='application/json')
 		self.assertEqual(response.status_code, 200)
 		self.assertIn('tres dimensiones', response.json()['answer'])
+
+	def test_chat_searches_published_document_text_and_returns_citation(self):
+		word = WordDocument()
+		word.add_paragraph('La estrategia prioriza rutas de prevención barrial con participación comunitaria.')
+		buffer = BytesIO()
+		word.save(buffer)
+		Document.objects.create(
+			title='Estrategia preventiva',
+			slug='estrategia-preventiva',
+			document_type='word',
+			summary='Orientaciones para prevención comunitaria.',
+			file=SimpleUploadedFile('estrategia.docx', buffer.getvalue()),
+			is_published=True,
+		)
+
+		response = self.client.post(
+			reverse('portal:chat'),
+			data={'query': '¿Qué rutas de prevención barrial se priorizan?'},
+			content_type='application/json',
+		)
+
+		self.assertEqual(response.status_code, 200)
+		self.assertIn('participación comunitaria', response.json()['answer'])
+		self.assertEqual(response.json()['sources'][0]['title'], 'Estrategia preventiva')
+		self.assertEqual(response.json()['sources'][0]['url'], '/documentos/estrategia-preventiva/')
+
+	def test_chat_searches_published_pdf_text(self):
+		buffer = BytesIO()
+		pdf = canvas.Canvas(buffer)
+		pdf.drawString(72, 720, 'El protocolo comunitario establece medidas de prevención verificables.')
+		pdf.save()
+		Document.objects.create(
+			title='Protocolo PDF',
+			slug='protocolo-pdf',
+			document_type='word',
+			summary='Documento PDF de consulta.',
+			file=SimpleUploadedFile('protocolo.pdf', buffer.getvalue(), content_type='application/pdf'),
+			is_published=True,
+		)
+
+		response = self.client.post(
+			reverse('portal:chat'),
+			data={'query': '¿Qué medidas verificables establece el protocolo comunitario?'},
+			content_type='application/json',
+		)
+
+		self.assertEqual(response.status_code, 200)
+		self.assertIn('medidas de prevención verificables', response.json()['answer'])
+		self.assertEqual(response.json()['sources'][0]['reference'], 'Página 1')
+
+	def test_chat_searches_published_presentation_text(self):
+		presentation = Presentation()
+		slide = presentation.slides.add_slide(presentation.slide_layouts[6])
+		text_box = slide.shapes.add_textbox(0, 0, 400, 100)
+		text_box.text = 'La estrategia interinstitucional fortalece acciones territoriales de prevención.'
+		buffer = BytesIO()
+		presentation.save(buffer)
+		Document.objects.create(
+			title='Presentación de prevención',
+			slug='presentacion-prevencion',
+			document_type='powerpoint',
+			summary='Presentación del proyecto.',
+			file=SimpleUploadedFile('prevencion.pptx', buffer.getvalue()),
+			is_published=True,
+		)
+
+		response = self.client.post(
+			reverse('portal:chat'),
+			data={'query': '¿Qué fortalece la estrategia interinstitucional?'},
+			content_type='application/json',
+		)
+
+		self.assertEqual(response.status_code, 200)
+		self.assertIn('fortalece acciones territoriales', response.json()['answer'])
+		self.assertEqual(response.json()['sources'][0]['reference'], 'Diapositiva 1')
+
+	def test_chat_search_does_not_include_unpublished_documents(self):
+		word = WordDocument()
+		word.add_paragraph('La estrategia astronómica comunitaria prioriza nebulosas singulares.')
+		buffer = BytesIO()
+		word.save(buffer)
+		Document.objects.create(
+			title='Documento privado',
+			slug='documento-privado-chat',
+			document_type='word',
+			summary='Contenido privado.',
+			file=SimpleUploadedFile('privado.docx', buffer.getvalue()),
+			is_published=False,
+		)
+
+		response = self.client.post(
+			reverse('portal:chat'),
+			data={'query': '¿Qué nebulosas singulares prioriza la estrategia astronómica?'},
+			content_type='application/json',
+		)
+
+		self.assertEqual(response.status_code, 200)
+		self.assertEqual(response.json()['sources'], [])
+		self.assertIn('No encontré información suficiente', response.json()['answer'])
+
+	def test_chat_free_question_has_a_length_limit(self):
+		response = self.client.post(
+			reverse('portal:chat'),
+			data={'query': 'a' * 501},
+			content_type='application/json',
+		)
+		self.assertEqual(response.status_code, 400)
+		self.assertIn('500 caracteres', response.json()['error'])
 
 	def test_chat_rejects_unknown_question(self):
 		response = self.client.post(reverse('portal:chat'), data={'category': 'dashboard', 'question': 'unknown'}, content_type='application/json')

@@ -1,6 +1,183 @@
 from __future__ import annotations
 
+import hashlib
+import json
+import logging
+import re
+import unicodedata
+from zipfile import BadZipFile
+
+from django.core.cache import cache
+from docx import Document as WordDocument
+from docx.opc.exceptions import PackageNotFoundError
+from pypdf import PdfReader
+from pypdf.errors import PdfReadError
+from pptx import Presentation
+
 from .utils import dashboard_number as _dashboard_number, dashboard_display as _dashboard_display
+
+logger = logging.getLogger(__name__)
+_SEARCH_STOPWORDS = {
+    'al', 'como', 'con', 'cual', 'cuales', 'del', 'en', 'esta', 'este', 'fue',
+    'hay', 'las', 'los', 'mas', 'para', 'por', 'que', 'sobre', 'una', 'uno',
+    'entre', 'son',
+}
+
+
+def _search_normalize(text):
+    normalized = unicodedata.normalize('NFKD', str(text).casefold())
+    return ''.join(character for character in normalized if not unicodedata.combining(character))
+
+
+def _search_tokens(text):
+    return {
+        token for token in re.findall(r'[a-z0-9]{2,}', _search_normalize(text))
+        if token not in _SEARCH_STOPWORDS
+    }
+
+
+def _append_search_chunk(index, title, text, reference='', slug=''):
+    text = ' '.join(str(text).split())
+    if len(text) < 20:
+        return
+    text = text[:1800]
+    tokens = _search_tokens(text)
+    if not tokens:
+        return
+    index.append({
+        'title': title,
+        'text': text[:1800],
+        'reference': reference,
+        'slug': slug,
+        'tokens': tokens,
+    })
+
+
+def _document_search_chunks(document, index):
+    _append_search_chunk(index, document.title, document.summary, 'Resumen', document.slug)
+    try:
+        extension = document.file.name.rsplit('.', 1)[-1].lower() if document.file else ''
+        if extension == 'docx':
+            with document.file.open('rb') as source:
+                word = WordDocument(source)
+            for paragraph_number, paragraph in enumerate(word.paragraphs, 1):
+                _append_search_chunk(index, document.title, paragraph.text, f'Párrafo {paragraph_number}', document.slug)
+            for table_number, table in enumerate(word.tables, 1):
+                for row_number, row in enumerate(table.rows, 1):
+                    _append_search_chunk(
+                        index, document.title,
+                        ' | '.join(cell.text for cell in row.cells),
+                        f'Tabla {table_number}, fila {row_number}', document.slug,
+                    )
+        elif extension == 'pptx':
+            with document.file.open('rb') as source:
+                presentation = Presentation(source)
+            for slide_number, slide in enumerate(presentation.slides, 1):
+                texts = []
+                for shape in slide.shapes:
+                    if getattr(shape, 'has_text_frame', False):
+                        texts.append(shape.text)
+                    if getattr(shape, 'has_table', False):
+                        texts.extend(
+                            ' | '.join(cell.text for cell in row.cells)
+                            for row in shape.table.rows
+                        )
+                _append_search_chunk(index, document.title, ' '.join(texts), f'Diapositiva {slide_number}', document.slug)
+        elif extension == 'pdf':
+            with document.file.open('rb') as source:
+                pdf = PdfReader(source)
+                for page_number in range(min(len(pdf.pages), 100)):
+                    _append_search_chunk(
+                        index, document.title, pdf.pages[page_number].extract_text() or '',
+                        f'Página {page_number + 1}', document.slug,
+                    )
+    except (OSError, ValueError, KeyError, AttributeError, BadZipFile, PackageNotFoundError, PdfReadError) as error:
+        logger.warning('No se pudo indexar el documento %s para el chat: %s', document.title, error)
+
+
+def _chat_index_signature(documents, statistics, bank):
+    document_signature = []
+    for document in documents:
+        try:
+            file_size = document.file.size if document.file else 0
+        except OSError:
+            file_size = None
+        document_signature.append((
+            document.pk, document.title, document.summary,
+            document.file.name if document.file else '', file_size, document.slug,
+        ))
+    stat_signature = {
+        key: [(item.get('label'), item.get('value')) for item in statistics.get(key, [])]
+        for key in ('annual', 'monthly', 'days', 'weapons', 'ages', 'regions', 'gender')
+    }
+    bank_signature = [
+        (category, question['id'], question['label'], question['answer'])
+        for category, data in bank.items()
+        for question in data['questions']
+    ]
+    serialized = json.dumps([document_signature, stat_signature, bank_signature], ensure_ascii=False, sort_keys=True)
+    return hashlib.sha256(serialized.encode('utf-8')).hexdigest()
+
+
+def _build_chat_search_index(documents, statistics, bank):
+    index = []
+    for document in documents:
+        _document_search_chunks(document, index)
+
+    for category in bank.values():
+        for question in category['questions']:
+            _append_search_chunk(
+                index, 'Respuestas del asistente del proyecto',
+                f"{question['label']} {question['answer']}", 'Banco de preguntas',
+            )
+
+    for key in ('annual', 'monthly', 'days', 'weapons', 'ages', 'regions', 'gender'):
+        for item in statistics.get(key, []):
+            _append_search_chunk(
+                index, 'Dashboard de datos',
+                f"{key}: {item.get('label', '')} — {item.get('value', '')} {item.get('detail', '')}",
+                'Indicadores del dashboard',
+            )
+    return index
+
+
+def search_chat_knowledge(query, documents, statistics, bank):
+    signature = _chat_index_signature(documents, statistics, bank)
+    cache_key = f'chat-search-index:{signature}'
+    index = cache.get(cache_key)
+    if index is None:
+        index = _build_chat_search_index(documents, statistics, bank)
+        cache.set(cache_key, index, timeout=60 * 60)
+
+    query_tokens = _search_tokens(query)
+    if not query_tokens:
+        return []
+
+    minimum_matches = min(2, len(query_tokens))
+    normalized_query = _search_normalize(query)
+    matches = []
+    for entry in index:
+        matched_tokens = query_tokens & entry['tokens']
+        if len(matched_tokens) < minimum_matches:
+            continue
+        coverage = len(matched_tokens) / len(query_tokens)
+        phrase_bonus = 0.15 if normalized_query in _search_normalize(entry['text']) else 0
+        matches.append((coverage + phrase_bonus, entry))
+
+    matches.sort(key=lambda match: match[0], reverse=True)
+    results = []
+    seen = set()
+    for score, entry in matches:
+        if score < 0.34:
+            break
+        identity = (entry['title'], entry['text'])
+        if identity in seen:
+            continue
+        seen.add(identity)
+        results.append({key: value for key, value in entry.items() if key != 'tokens'})
+        if len(results) == 3:
+            break
+    return results
 
 
 def get_question_bank():

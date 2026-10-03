@@ -162,9 +162,11 @@ Cada registro necesita título, identificador, tipo, resumen y archivo. Al marca
 
 Para conservar exactamente el diseño de un informe, carga también su PDF en **Versión PDF para lectura**. La página priorizará ese PDF original sobre la conversión automática y mantendrá sus gráficos, imágenes, tablas y paginación.
 
-## Asistente de preguntas frecuentes
+## Asistente del proyecto
 
-El botón **Pregúntale al proyecto** aparece en todas las páginas. Ofrece un banco de preguntas y respuestas organizado en tres categorías — Dashboard, Documentación y Presentación — construido con los datos reales del Excel publicado. No requiere conexión a servicios externos ni claves de API.
+El botón **Pregúntale al proyecto** aparece en todas las páginas. Permite elegir preguntas guiadas o escribir una consulta libre; busca coincidencias en documentos publicados de Word, PDF y PowerPoint, en las respuestas del asistente y en los indicadores agregados del dashboard. Cuando encuentra evidencia, muestra el fragmento y enlaza al documento y página, párrafo o diapositiva. El Excel de 70 MB no se vuelve a recorrer para cada consulta: se usan los indicadores precalculados. La búsqueda es textual, no genera respuestas con IA; los PDF escaneados como imagen no tienen texto para buscar.
+
+Las respuestas pueden leerse en voz alta desde el botón **Escuchar respuesta** o con **Lectura automática**. También se puede dictar una consulta con el botón del micrófono, si el navegador lo soporta y tiene permiso. El dictado utiliza la configuración de voz del navegador; escribir la pregunta es siempre una alternativa.
 
 ## Configuración de producción
 
