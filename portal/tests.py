@@ -2,6 +2,7 @@ from io import BytesIO
 from pathlib import Path
 import shutil
 import tempfile
+from unittest.mock import patch
 
 from django.conf import settings
 from django.core.cache import cache
@@ -161,6 +162,23 @@ class DocumentViewsTests(TestCase):
 		response = self.client.get(reverse('portal:dashboard_api'))
 		self.assertEqual(response.status_code, 200)
 		self.assertIn('annual', response.json())
+
+	@patch('portal.views._extract_excel_dashboard', side_effect=AssertionError('No debe volver a analizarse el Excel publicado en cada arranque.'))
+	def test_repository_excel_uses_precomputed_dashboard_cache(self, extract_excel):
+		document = Document.objects.create(
+			title='Excel versionado',
+			slug='lesiones-personales-en-colombia-20212025',
+			document_type='excel',
+			summary='Base de datos',
+			file=SimpleUploadedFile('archivo.xlsx', b'excel'),
+			is_published=True,
+		)
+
+		data = dashboard_preview_data(document)
+
+		self.assertEqual(data['annual'][0]['label'], '2021')
+		self.assertTrue(data['facets'])
+		extract_excel.assert_not_called()
 
 	def test_generated_report_pdf_returns_pdf(self):
 		response = self.client.post(reverse('portal:generated_report_pdf'), data={'report_text': 'INFORME TÉCNICO\n\nVíctimas: 495.272'}, content_type='application/json')
@@ -409,7 +427,11 @@ class RepositoryDocumentSyncTests(TestCase):
 
 				self.assertEqual(Document.objects.filter(is_published=True).count(), 3)
 				document = Document.objects.get(slug='lesiones-personales-en-colombia-20212025')
+				self.assertEqual(document.file.name, 'documents/repository/lesiones_personales.xlsx')
 				with document.file.open('rb') as saved_file:
 					self.assertEqual(saved_file.read(), b'xlsx content')
+				response = self.client.get(document.file.url)
+				self.assertEqual(response.status_code, 200)
+				self.assertEqual(b''.join(response.streaming_content), b'xlsx content')
 				word_document = Document.objects.get(slug='documentacion-del-proyecto')
 				self.assertTrue(default_storage.exists(word_document.pdf_file.name))

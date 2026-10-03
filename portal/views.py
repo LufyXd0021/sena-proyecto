@@ -675,7 +675,14 @@ def dashboard_preview_data(document=None):
 		try:
 			if cache_key not in _dashboard_cache or not _dashboard_cache[cache_key].get('facets'):
 				_dashboard_cache.clear()
-				_dashboard_cache[cache_key] = _extract_excel_dashboard(document)
+				precomputed_cache = settings.BASE_DIR / 'documentos' / 'dashboard_cache.json'
+				if document.slug == 'lesiones-personales-en-colombia-20212025' and precomputed_cache.is_file():
+					cached_data = json.loads(precomputed_cache.read_text(encoding='utf-8'))['data']
+					if not isinstance(cached_data, dict) or not cached_data.get('facets'):
+						raise ValueError(f'La caché de dashboard no tiene el formato esperado: {precomputed_cache}')
+					_dashboard_cache[cache_key] = _enrich_dashboard_data(cached_data)
+				else:
+					_dashboard_cache[cache_key] = _extract_excel_dashboard(document)
 			return _enrich_dashboard_data(_dashboard_cache[cache_key])
 		except FileNotFoundError:
 			return _enrich_dashboard_data({'annual': [], 'monthly': [], 'days': [], 'weapons': [], 'ages': [], 'regions': [], 'gender': [], 'kpis': [{'label': 'Total casos', 'value': '0'}, {'label': 'Año con más casos', 'value': '-'}, {'label': 'Municipios', 'value': '0'}]})

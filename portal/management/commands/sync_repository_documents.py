@@ -13,7 +13,9 @@ REPOSITORY_DOCUMENTS = (
         'document_type': 'word',
         'summary': 'Documento metodológico del proyecto sobre lesiones personales en Colombia.',
         'file': 'Documetacion_lesiones_personales.docx',
+        'storage_name': 'documentacion.docx',
         'pdf_file': 'Documetacion_lesiones_personales.pdf',
+        'pdf_storage_name': 'documentacion.pdf',
     },
     {
         'slug': 'lesiones-personales-en-colombia-20212025',
@@ -21,6 +23,7 @@ REPOSITORY_DOCUMENTS = (
         'document_type': 'excel',
         'summary': 'Base de datos del proyecto con información de lesiones personales en Colombia entre 2021 y 2025.',
         'file': 'lesiones_personales_0 (1) (1).xlsx',
+        'storage_name': 'lesiones_personales.xlsx',
     },
     {
         'slug': 'presentacion-del-proyecto-de-lesiones-personales',
@@ -28,6 +31,7 @@ REPOSITORY_DOCUMENTS = (
         'document_type': 'powerpoint',
         'summary': 'Presentación general del proyecto de lesiones personales en Colombia.',
         'file': 'Presentacion De Proyecto.pptx',
+        'storage_name': 'presentacion.pptx',
     },
 )
 
@@ -42,7 +46,7 @@ class Command(BaseCommand):
             if not source_path.is_file():
                 raise CommandError(f'No se encontró el documento versionado: {source_path.name}')
 
-            storage_name = f"documents/repository/{definition['file']}"
+            storage_name = f"documents/repository/{definition['storage_name']}"
             if not default_storage.exists(storage_name):
                 with source_path.open('rb') as source:
                     default_storage.save(storage_name, File(source, name=source_path.name))
@@ -59,7 +63,7 @@ class Command(BaseCommand):
                 pdf_path = source_root / pdf_source
                 if not pdf_path.is_file():
                     raise CommandError(f'No se encontró el PDF versionado: {pdf_path.name}')
-                pdf_storage_name = f'documents/repository/{pdf_source}'
+                pdf_storage_name = f"documents/repository/{definition['pdf_storage_name']}"
                 if not default_storage.exists(pdf_storage_name):
                     with pdf_path.open('rb') as source:
                         default_storage.save(pdf_storage_name, File(source, name=pdf_path.name))
