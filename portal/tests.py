@@ -260,6 +260,7 @@ class DocumentViewsTests(TestCase):
 		self.assertEqual(payload['map_dept_totals'], {'CUNDINAMARCA': 150124, 'BOYACÁ': 20580})
 		self.assertEqual(payload['map_total'], 170704)
 		self.assertEqual(payload['active_filters']['dept'], 'BOYACÁ')
+		self.assertEqual(response['Cache-Control'], 'no-store')
 
 	def test_chat_lists_question_categories(self):
 		response = self.client.get(reverse('portal:chat'))

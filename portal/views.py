@@ -706,7 +706,6 @@ def dashboard_preview_data(document=None):
 		return _enrich_dashboard_data(data)
 
 
-@cache_page(60 * 5)
 def map_api(request):
 	"""Endpoint JSON para el mapa coroplético de Colombia.
 
@@ -780,7 +779,7 @@ def map_api(request):
 	# Ordenar meses por número
 	months_sorted = sorted(all_months, key=lambda item: int(item[0]) if item[0].isdigit() else 99)
 
-	return JsonResponse({
+	response = JsonResponse({
 		'dept_totals': {k: int(v) for k, v in sorted(dept_totals.items(), key=lambda item: -item[1])},
 		'map_dept_totals': {k: int(v) for k, v in sorted(map_dept_totals.items(), key=lambda item: -item[1])},
 		'total': int(total),
@@ -798,3 +797,5 @@ def map_api(request):
 			'ages':    sorted(all_ages),
 		},
 	})
+	response['Cache-Control'] = 'no-store'
+	return response
