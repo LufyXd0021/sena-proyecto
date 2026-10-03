@@ -208,6 +208,7 @@ El límite de carga es de 100 MiB (`DJANGO_MAX_UPLOAD_SIZE=104857600`), suficien
 Esta configuración usa los planes gratuitos para demostraciones: el servicio puede suspenderse cuando no recibe tráfico y la base de datos gratuita tiene fecha de expiración. Render reconstruye los documentos publicados desde la carpeta `documentos/` versionada en GitHub cada vez que inicia el servicio.
 
 Render termina HTTPS en su proxy y redirige allí las solicitudes HTTP. Por eso el Blueprint desactiva la redirección SSL duplicada de Django, que puede causar un bucle detrás del proxy.
+Los PDFs se muestran en una vista previa dentro del sitio. Django usa `X-Frame-Options: SAMEORIGIN` para permitir esa vista previa solo desde el mismo sitio y evitar que otros dominios lo inserten.
 
 ### Publicar documentos gratis desde GitHub
 

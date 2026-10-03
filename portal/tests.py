@@ -80,6 +80,23 @@ class DocumentViewsTests(TestCase):
 		self.assertEqual(response.status_code, 200)
 		self.assertEqual(b''.join(response.streaming_content), b'contenido-del-excel')
 
+	def test_document_pdf_can_be_embedded_on_same_site(self):
+		document = Document.objects.create(
+			title='Documento con PDF',
+			slug='documento-con-pdf',
+			document_type='word',
+			summary='Resumen',
+			file=self._create_word_file('documento.docx'),
+			pdf_file=SimpleUploadedFile('documento.pdf', b'%PDF contenido', content_type='application/pdf'),
+			is_published=True,
+		)
+
+		response = self.client.get(reverse('portal:document_pdf', args=[document.slug]))
+
+		self.assertEqual(response.status_code, 200)
+		self.assertEqual(response['Content-Type'], 'application/pdf')
+		self.assertEqual(response['X-Frame-Options'], 'SAMEORIGIN')
+
 	def test_published_document_media_is_downloadable(self):
 		document = Document.objects.create(
 			title='Archivo público',

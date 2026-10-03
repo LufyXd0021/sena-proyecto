@@ -92,7 +92,7 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
-X_FRAME_OPTIONS = os.environ.get('DJANGO_X_FRAME_OPTIONS', 'SAMEORIGIN' if DEBUG else 'DENY')
+X_FRAME_OPTIONS = os.environ.get('DJANGO_X_FRAME_OPTIONS', 'SAMEORIGIN')
 SECURE_SSL_REDIRECT = os.environ.get(
     'DJANGO_SECURE_SSL_REDIRECT',
     str(not DEBUG and not RENDER_EXTERNAL_HOSTNAME),

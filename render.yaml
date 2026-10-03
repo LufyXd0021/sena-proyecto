@@ -20,6 +20,8 @@ services:
         value: postgresql
       - key: DJANGO_SECURE_SSL_REDIRECT
         value: "False"
+      - key: DJANGO_X_FRAME_OPTIONS
+        value: SAMEORIGIN
       - key: DJANGO_EMAIL_BACKEND
         value: django.core.mail.backends.smtp.EmailBackend
       - key: DJANGO_MAX_UPLOAD_SIZE
