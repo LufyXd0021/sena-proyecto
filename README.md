@@ -191,3 +191,14 @@ python serve.py
 ```
 
 El puerto 8000 debe quedar accesible solo desde el propio servidor o la red privada; el firewall y el proxy deben ser los únicos puntos expuestos públicamente.
+
+## Desplegar una demostración en Render
+
+El archivo `render.yaml` permite crear el servicio web y la base PostgreSQL desde Render:
+
+1. Sube este repositorio a GitHub y entra a [Render](https://render.com/).
+2. Selecciona **New + → Blueprint**, conecta tu cuenta de GitHub y elige este repositorio.
+3. Confirma la creación de los recursos definidos en `render.yaml`. Render generará `DJANGO_SECRET_KEY` y conectará la base de datos.
+4. Cuando el despliegue termine, abre la URL `onrender.com` asignada al servicio.
+
+Esta configuración usa los planes gratuitos para demostraciones: el servicio puede suspenderse cuando no recibe tráfico y la base de datos gratuita tiene fecha de expiración. Los archivos subidos a `media/` no tienen almacenamiento persistente en esta configuración y pueden perderse al reiniciar o redesplegar. No la uses para información real ni para conservar datos importantes; para producción configura recursos persistentes y almacenamiento de archivos adecuado.

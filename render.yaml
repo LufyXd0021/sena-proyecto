@@ -1,0 +1,42 @@
+databases:
+  - name: lesiones-db
+    databaseName: lesiones
+    user: lesiones
+    plan: free
+
+services:
+  - type: web
+    name: lesiones-personales
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt && python manage.py collectstatic --noinput
+    startCommand: python manage.py migrate && python serve.py
+    envVars:
+      - key: DJANGO_DEBUG
+        value: "False"
+      - key: DJANGO_SECRET_KEY
+        generateValue: true
+      - key: DJANGO_DB_ENGINE
+        value: postgresql
+      - key: DJANGO_EMAIL_BACKEND
+        value: django.core.mail.backends.smtp.EmailBackend
+      - key: POSTGRES_DB
+        fromDatabase:
+          name: lesiones-db
+          property: database
+      - key: POSTGRES_USER
+        fromDatabase:
+          name: lesiones-db
+          property: user
+      - key: POSTGRES_PASSWORD
+        fromDatabase:
+          name: lesiones-db
+          property: password
+      - key: POSTGRES_HOST
+        fromDatabase:
+          name: lesiones-db
+          property: host
+      - key: POSTGRES_PORT
+        fromDatabase:
+          name: lesiones-db
+          property: port

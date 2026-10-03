@@ -39,7 +39,10 @@ load_local_env()
 # Security configuration with environment variables for safer deployment.
 SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', 'dev-only-key-change-me')
 DEBUG = os.environ.get('DJANGO_DEBUG', 'True').lower() in {'1', 'true', 'yes', 'on'}
+RENDER_EXTERNAL_HOSTNAME = os.environ.get('RENDER_EXTERNAL_HOSTNAME', '').strip()
 PROJECT_PUBLIC_URL = os.environ.get('PROJECT_PUBLIC_URL', '').strip().rstrip('/')
+if not PROJECT_PUBLIC_URL and RENDER_EXTERNAL_HOSTNAME:
+    PROJECT_PUBLIC_URL = f'https://{RENDER_EXTERNAL_HOSTNAME}'
 MAX_UPLOAD_SIZE = int(os.environ.get('DJANGO_MAX_UPLOAD_SIZE', 10 * 1024 * 1024))
 if MAX_UPLOAD_SIZE <= 0:
      raise ImproperlyConfigured('DJANGO_MAX_UPLOAD_SIZE debe ser mayor que cero.')
@@ -47,6 +50,10 @@ DATA_UPLOAD_MAX_MEMORY_SIZE = MAX_UPLOAD_SIZE
 FILE_UPLOAD_MAX_MEMORY_SIZE = MAX_UPLOAD_SIZE
 ADMIN_URL = os.environ.get('DJANGO_ADMIN_URL', 'admin/')
 CSRF_TRUSTED_ORIGINS = [origin.strip() for origin in os.environ.get('DJANGO_CSRF_TRUSTED_ORIGINS', '').split(',') if origin.strip()]
+if not DEBUG and RENDER_EXTERNAL_HOSTNAME:
+    render_origin = f'https://{RENDER_EXTERNAL_HOSTNAME}'
+    if render_origin not in CSRF_TRUSTED_ORIGINS:
+        CSRF_TRUSTED_ORIGINS.append(render_origin)
 if not DEBUG and SECRET_KEY == 'dev-only-key-change-me':
     raise ImproperlyConfigured('DJANGO_SECRET_KEY debe configurarse cuando DJANGO_DEBUG=False.')
 ALLOWED_HOSTS = os.environ.get(
@@ -54,6 +61,8 @@ ALLOWED_HOSTS = os.environ.get(
     'localhost,127.0.0.1,[::1]'
 ).split(',')
 ALLOWED_HOSTS = [host.strip() for host in ALLOWED_HOSTS if host.strip()]
+if RENDER_EXTERNAL_HOSTNAME and RENDER_EXTERNAL_HOSTNAME not in ALLOWED_HOSTS:
+    ALLOWED_HOSTS.append(RENDER_EXTERNAL_HOSTNAME)
 if DEBUG:
     # El QR apunta a la IP local del equipo durante el desarrollo.
     if '*' not in ALLOWED_HOSTS:
