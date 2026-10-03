@@ -114,8 +114,69 @@ const initializeChat = () => {
     const quickSuggestions = widget.querySelector('[data-chat-suggestions]');
     const progress = widget.querySelector('[data-chat-progress]');
     const backButton = widget.querySelector('[data-chat-back]');
+    const voiceToggle = widget.querySelector('[data-chat-voice-toggle]');
+    const voiceStatus = widget.querySelector('[data-chat-voice-status]');
+    const speechSupported = 'speechSynthesis' in window && 'SpeechSynthesisUtterance' in window;
+    let readAnswersAloud = false;
+    let activeSpeechButton = null;
+    let activeUtterance = null;
+
+    const stopSpeaking = () => {
+        const previousButton = activeSpeechButton;
+        activeSpeechButton = null;
+        activeUtterance = null;
+        if (speechSupported) window.speechSynthesis.cancel();
+        if (previousButton) {
+            previousButton.textContent = '▶ Escuchar respuesta';
+            previousButton.setAttribute('aria-label', 'Escuchar respuesta');
+        }
+    };
+    const speakAnswer = (text, button = null) => {
+        if (!speechSupported) {
+            voiceStatus.textContent = 'La lectura en voz alta no está disponible en este navegador.';
+            return;
+        }
+        stopSpeaking();
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.lang = 'es-CO';
+        const spanishVoices = window.speechSynthesis.getVoices().filter((voice) => voice.lang.toLowerCase().startsWith('es'));
+        utterance.voice = spanishVoices.find((voice) => voice.lang.toLowerCase() === 'es-co')
+            || spanishVoices.find((voice) => voice.lang.toLowerCase() === 'es-es')
+            || spanishVoices[0]
+            || null;
+        if (button) {
+            activeSpeechButton = button;
+            button.textContent = '■ Detener voz';
+            button.setAttribute('aria-label', 'Detener lectura de la respuesta');
+        }
+        activeUtterance = utterance;
+        utterance.onend = () => {
+            if (activeUtterance === utterance) stopSpeaking();
+        };
+        utterance.onerror = () => {
+            if (activeUtterance !== utterance) return;
+            stopSpeaking();
+            voiceStatus.textContent = 'No se pudo reproducir la voz. Puedes intentarlo nuevamente.';
+        };
+        window.speechSynthesis.speak(utterance);
+    };
+    if (!speechSupported) {
+        voiceToggle.disabled = true;
+        voiceToggle.title = 'La lectura en voz alta no está disponible en este navegador';
+    }
+    voiceToggle.addEventListener('click', () => {
+        readAnswersAloud = !readAnswersAloud;
+        voiceToggle.setAttribute('aria-pressed', String(readAnswersAloud));
+        voiceToggle.classList.toggle('is-active', readAnswersAloud);
+        voiceToggle.textContent = readAnswersAloud ? '🔊 Lectura activada' : '🔊 Lectura automática';
+        voiceStatus.textContent = readAnswersAloud
+            ? 'La lectura automática está activada.'
+            : 'La lectura automática está desactivada.';
+        if (!readAnswersAloud) stopSpeaking();
+    });
 
     const setOpen = (isOpen) => {
+        if (!isOpen) stopSpeaking();
         panel.hidden = !isOpen;
         widget.classList.toggle('is-open', isOpen);
         launcher.setAttribute('aria-expanded', String(isOpen));
@@ -132,11 +193,27 @@ const initializeChat = () => {
         .replace(/\n/g, '<br>');
     const addMessage = (text, role, sources = []) => {
         const message = document.createElement('div');
-        message.className = `chat-message chat-message-${role}`;
+        message.className = `chat-message ${role.split(' ').map((item) => `chat-message-${item}`).join(' ')}`;
         if (role === 'assistant') {
             message.innerHTML = formatAssistantText(text);
         } else {
             message.textContent = text;
+        }
+        if (role === 'assistant' && !message.classList.contains('chat-message-pending')) {
+            const speakButton = document.createElement('button');
+            speakButton.type = 'button';
+            speakButton.className = 'chat-message-speak';
+            speakButton.textContent = '▶ Escuchar respuesta';
+            speakButton.setAttribute('aria-label', 'Escuchar respuesta');
+            speakButton.addEventListener('click', () => {
+                if (activeSpeechButton === speakButton) {
+                    stopSpeaking();
+                    return;
+                }
+                speakAnswer(text, speakButton);
+            });
+            message.appendChild(speakButton);
+            if (readAnswersAloud) speakAnswer(text, speakButton);
         }
         if (sources.length) {
             const sourceNote = document.createElement('small');

@@ -9,7 +9,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="{% static 'css/site.css' %}?v=20">
+    <link rel="stylesheet" href="{% static 'css/site.css' %}?v=21">
     <link rel="stylesheet" href="{% static 'css/dashboard.css' %}?v=3">
     <link rel="stylesheet" href="{% static 'css/overrides.css' %}?v=5">
     {% block extra_head %}{% endblock %}
@@ -40,7 +40,8 @@
             <span class="chat-launcher-icon" aria-hidden="true">✦</span><span class="chat-launcher-label">Pregúntale al proyecto</span>
         </button>
         <div class="chat-panel" id="project-chat-panel" hidden>
-            <div class="chat-panel-header"><div><span class="chat-kicker">Guía del proyecto</span><h2>Elige qué quieres consultar</h2></div><button class="chat-close" type="button" aria-label="Cerrar chat">×</button></div>
+            <div class="chat-panel-header"><div><span class="chat-kicker">Guía del proyecto</span><h2>Elige qué quieres consultar</h2></div><div class="chat-header-actions"><button class="chat-voice-toggle" data-chat-voice-toggle type="button" aria-pressed="false" title="Leer automáticamente las respuestas">🔊 Lectura automática</button><button class="chat-close" type="button" aria-label="Cerrar chat">×</button></div></div>
+            <div class="chat-voice-status sr-only" data-chat-voice-status role="status" aria-live="polite"></div>
             <div class="chat-messages" data-chat-messages aria-live="polite"><div class="chat-message chat-message-assistant">Selecciona un tema y después una pregunta. Las respuestas están construidas con la documentación publicada y los datos del dashboard.</div></div>
             <div class="chat-progress" data-chat-progress>Paso 1 de 2 · Elige un tema</div>
             <div class="chat-suggestions" data-chat-suggestions aria-label="Preguntas rápidas"></div>
@@ -56,7 +57,7 @@
         <span>Colombia · 2021—2025</span>
     </footer>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js" defer></script>
-    <script src="{% static 'js/site.js' %}?v=7" defer></script>
+    <script src="{% static 'js/site.js' %}?v=8" defer></script>
     {% block extra_scripts %}{% endblock %}
 </body>
 </html>
